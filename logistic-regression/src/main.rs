@@ -2,7 +2,7 @@ extern crate csv;
 extern crate rustc_serialize;
 
 fn main() {
-    // collect user-supplied file path
+    // collect user inputs
     let fpath = ::std::env::args().nth(1).unwrap();
     let iters = ::std::env::args().nth(2).unwrap().parse::<i32>().unwrap();
     let alpha = ::std::env::args().nth(3).unwrap().parse::<f64>().unwrap();
@@ -10,15 +10,14 @@ fn main() {
     // read data
     let (x, y) = read_csv(fpath);
 
-    println!("{:?}, {:?}", x[x.len()-1], y[y.len()-1]);
-
     // initial parameter vector to zeros
     let mut theta: Vec<f64> = vec![0f64; x[0].len()];
 
     // compute the initial cost
     let (mut cost, mut grad) = cost_function(&x, &y, &theta);
 
-    println!("Cost: {:?}\nTheta: {:?}\nGrad: {:?}", &cost, &theta, &grad);
+    // print the initial cost and parameter gradients
+    println!("Initial Cost: {:?}\nGrad: {:?}", &cost, &grad);
 
     // try to optimize
     for _ in 0..iters {
@@ -28,9 +27,6 @@ fn main() {
         gradient_descent(&mut theta, &grad, &alpha);
         println!("Cost: {:?}\nTheta: {:?}\nGrad: {:?}", &cost, &theta, &grad);
     }
-
-    println!("Cost: {:?}\nTheta: {:?}\nGrad: {:?}", &cost, &theta, &grad);
-
 }
 
 /// Read the CSV data into a design matrix and response vector
@@ -71,7 +67,7 @@ fn read_csv(fpath: String) -> (Vec<Vec<f64>>, Vec<f64>) {
 
 /// Sigmoid / Logistic Function
 fn sigmoid(num: f64) -> f64 {
-    1.0/(1.0+(num.exp()))
+    1.0/(1.0+((-num).exp()))
 }
 
 /// Log-likelihood cost function
@@ -97,14 +93,14 @@ fn cost_function(x: &Vec<Vec<f64>>, y: &Vec<f64>, theta: &Vec<f64>) -> (f64, Vec
         let h = sigmoid(dot(&x[i], &theta));
 
         // increment cost according to log-likelihood function
-        J += &y[i]*&h.ln() + (1f64-&y[i])*(1f64-&h).ln();
+        J += y[i]*h.ln() + (1f64-y[i])*(1f64-h).ln();
 
         // update the gradients
         for j in 0..k {
-            grad[j] += (&h-&y[i])*&x[i][j];
+            grad[j] += (h-y[i])*x[i][j];
         }
     }
-    println!("{}, {}", J, m);
+
     J = -J/(m as f64); // scale cost by number of training examples
     (J, grad)
 }
@@ -112,7 +108,7 @@ fn cost_function(x: &Vec<Vec<f64>>, y: &Vec<f64>, theta: &Vec<f64>) -> (f64, Vec
 /// Update parameter values by subtracting some fraction (alpha) of the gradients
 fn gradient_descent(theta: &mut Vec<f64>, grad: &Vec<f64>, alpha: &f64) {
     for i in 0..theta.len() {
-        theta[i] += alpha*grad[i];
+        theta[i] -= alpha*grad[i];
     }
 }
 

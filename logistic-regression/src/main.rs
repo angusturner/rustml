@@ -93,15 +93,14 @@ fn cost_function(x: &Vec<Vec<f64>>, y: &Vec<f64>, theta: &Vec<f64>) -> (f64, Vec
         let h = sigmoid(dot(&x[i], &theta));
 
         // increment cost according to log-likelihood function
-        J += y[i]*h.ln() + (1f64-y[i])*(1f64-h).ln();
+        J += (-y[i]*h.ln() - (1f64-y[i])*(1f64-h).ln())/(m as f64);
 
         // update the gradients
         for j in 0..k {
-            grad[j] += (h-y[i])*x[i][j];
+            grad[j] += ((h-y[i])*x[i][j])/(m as f64);
         }
     }
 
-    J = -J/(m as f64); // scale cost by number of training examples
     (J, grad)
 }
 

@@ -1,0 +1,9 @@
+[package]
+name = "nn"
+version = "0.1.0"
+authors = ["angusturner <angusturner27@gmail.com>"]
+
+[dependencies]
+csv = "0.14"
+rustc-serialize = "0.3"
+nalgebra = "0.10.*"

@@ -1,6 +1,6 @@
 extern crate csv;
 extern crate rustc_serialize;
-extern crate rulinalg as rl:
+extern crate rulinalg as rl;
 
 use rl::matrix::{Matrix, BaseMatrix};
 
@@ -30,7 +30,7 @@ fn main() {
     // compare predictions with the true values
     let mut q = 0;
     for i in 0..p.len() {
-        if y[(i,0)] == (p[i] + 1) as f64 {
+        if y[[i,0]] == (p[i] + 1) as f64 {
             q += 1;
         }
     }
@@ -39,23 +39,23 @@ fn main() {
     let accuracy = (q as f64)/(m as f64);
 
     // compute the cost / training error
-    let cost = cost_fn(&y2, &a3);
+    //let cost = cost_fn(&y2, &a3);
 
     // compute activations of the output
     println!("Training set accuracy: {}", accuracy);
 }
 
 /// log-likelihood cost function
-fn cost_fn(h: &Matrix<f64>, y: &Matrix<f64>) -> f64 {
+/*fn cost_fn(h: &Matrix<f64>, y: &Matrix<f64>) -> f64 {
     let cost = y.data().dot(log(&h).data())+(y.add(-1f64)).data().dot((1f64-log(&h).data()));
     cost
-}
+}*/
 
 /// compute log on a matrix
 fn log(mat: &Matrix<f64>) -> Matrix<f64> {
     let (m, n) = dims(&mat);
     let col_vec = mat.data().iter().map(|x| x.ln()).collect::<Vec<f64>>();
-    Matrix::new(m, n, col_vec);
+    Matrix::new(m, n, col_vec)
 }
 
 /// reduce a matrix into a vector containing the index of the maximum in every row
@@ -63,7 +63,7 @@ fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
     let (m, n) = dims(&mat);
 
     // transpose, then convert to vector (column-major order)
-    let (_i, _v, res) = mat.transpose().data().iter()
+    let (_i, _v, res) = mat.iter()
         // how to abuse reduce patterns
         .fold((0usize, 0f64, vec![0i64; m]), |acc, &val| {
             let (mut i, mut v, mut vec) = acc;
@@ -78,7 +78,6 @@ fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
             i += 1;
             (i, v, vec)
         });
-
     res
 }
 
@@ -86,12 +85,11 @@ fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
 fn add_ones(mat: &Matrix<f64>) -> Matrix<f64> {
     let (m, n) = dims(&mat);
 
-    // convert to DVector, iterate, dereference vals, collect into Vec (must be a better way...)
-    let mut col_vec = mat.data().iter().map(|x| *x).collect::<Vec<f64>>();
+    let mut col_vec = mat.transpose().iter().map(|x| *x).collect::<Vec<f64>>();
     let mut ones = vec![1f64; m];
     ones.append(&mut col_vec);
 
-    Matrix::new(m, n+1, &ones)
+    Matrix::new(n+1, m, ones).transpose()
 }
 
 /// apply a function to every element in a matrix
@@ -108,7 +106,7 @@ fn apply(mat: &Matrix<f64>, f: fn(n: &f64) -> f64) -> Matrix<f64> {
 
 /// get matrix dimensions
 fn dims(mat: &Matrix<f64>) -> (usize, usize) {
-    (mat.nrows(), mat.ncols())
+    (mat.rows(), mat.cols())
 }
 
 /// Sigmoid Function
@@ -150,5 +148,5 @@ fn read_csv(file_path: &str, add_ones: bool) -> Matrix<f64> {
     }
 
     // reshape data into matrix
-    Matrix::from_row_vector(m, n, &out)
+    Matrix::new(m, n, out)
 }

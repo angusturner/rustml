@@ -15,7 +15,7 @@ e.g 150,000 iters and alpha=0.001 seems to work
 * ~~Unrolling / rolling of feature vectors into matrices~~
 * ~~Basic architecture with forward propagation to classify data~~
 * ~~Implement cost function~~
-* Backpropagation to get gradients
+* ~~Backpropagation to get gradients~~
 * Gradient descent to minimize cost function
 * Implement gradient checking to test if backprop is working.
 * Add regularization to prevent overfitting

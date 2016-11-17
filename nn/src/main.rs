@@ -4,16 +4,36 @@ extern crate rulinalg as rl;
 
 use rl::matrix::{Matrix, BaseMatrix};
 
+#[allow(non_snake_case)]
 fn main() {
-    // Read in the data
-    let mut X = read_csv("input.csv", true); // design matrix
-    let mut y = read_csv("output.csv", false); // response vector
-    let mut y2 = read_csv("output_map.csv", false); // response matrix (class k -> [0..1..r])
-    let mut theta1 = read_csv("theta1.csv", false); // weights mapping input to hidden layer
-    let mut theta2 = read_csv("theta2.csv", false); // weights mapping hidden layer to output layer
+    // design matrix m x n, where m = training examples, n = number of features
+    let mut X = read_csv("input.csv");
 
-    // get the dimensions of the training set
+    // response vector m x 1
+    // y(i) corresponds to i-th training example, and is an integer between {1..r},
+    // where r is the number of classes
+    let y = read_csv("output.csv");
+
+    // response matrix m x r, mapping y(i) to a vector of r zeroes, with a 1 in the y(i)-th position
+    let y2 = read_csv("output_map.csv");
+
+    // weights mapping input features to the second (hidden) layer s2 x n+1,
+    // where s2 is the number of neurons in layer 2, n+1 is the number of features plus an extra
+    // value corresponding to the input bias neuron
+    let theta1 = read_csv("theta1.csv");
+
+    // weights mapping hidden layer to output layer s3 x s2 + 1
+    // where s3 = r is the number of outputs, and s2 + 1 is the number of hidden layer neurons
+    // plus an extra value corresponding the hidden layer bias neuron
+    let theta2 = read_csv("theta2.csv");
+
+    // add a column of 1's to the design matrix
+    X = add_ones(&X);
+
+    // get the dimensions of the input and weights
     let (m, n) = dims(&X);
+    let (s2, _) = dims(&theta1);
+    let (s3, _) = dims(&theta2);
 
     // compute activations of the hidden layer
     let z2 = &X*&theta1.transpose();
@@ -21,8 +41,8 @@ fn main() {
     a2 = add_ones(&a2); // add bias units
 
     // compute activations on the output layer
-    let mut z3 = &a2*&theta2.transpose();
-    let mut a3 = apply(&z3, sigmoid);
+    let z3 = &a2*&theta2.transpose();
+    let a3 = apply(&z3, sigmoid);
 
     // compute the predictions
     let p = row_max(&a3);
@@ -39,22 +59,38 @@ fn main() {
     let accuracy = (q as f64)/(m as f64);
 
     // compute the cost / training error
-    //let cost = cost_fn(&y2, &a3);
+    let lambda = 1f64;
+    let cost = cost_fn(&a3, &y2, lambda, &theta1, &theta2);
 
-    // compute activations of the output
-    println!("Training set accuracy: {}", accuracy);
+    // debug output
+    println!("Loaded m={} training examples with n={} features.", m, n-1);
+    println!("Network has {} neurons in the hidden layer, and {} outputs", s2, s3);
+    println!("Training set accuracy (should be about 95%): {:?}", accuracy);
+    println!("Training set error (should be about 0.5): {:?}", cost);
 }
 
-/// log-likelihood cost function
-/*fn cost_fn(h: &Matrix<f64>, y: &Matrix<f64>) -> f64 {
-    let cost = y.data().dot(log(&h).data())+(y.add(-1f64)).data().dot((1f64-log(&h).data()));
-    cost
-}*/
+/// regularized log-likelihood cost function
+#[allow(non_snake_case)]
+fn cost_fn(h: &Matrix<f64>, y: &Matrix<f64>, lambda: f64, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> f64 {
+    let (m, n) = dims(&y);
 
-/// compute log on a matrix
+    // compute the cost: -1/m * [ sum ( y.*log(h) + (1-y).*log(1-h) ) ]
+    let ones: Matrix<f64> = Matrix::new(m, n, vec![1f64; m*n]); // needed because f64 - Matrix is not valid :(
+    let cost = y.elemul(&log(&h)) + (&ones-y).elemul(&log(&(&ones-h)));
+    let J: f64 = - cost.sum() / (m as f64); // switch signs, take the mean
+
+    // zero the bias units in the parameter matrices
+    let theta1_0 = zero_first_col(&theta1);
+    let theta2_0 = zero_first_col(&theta2);
+
+    // add regularization: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ]
+    J + (lambda/(2f64 * (m as f64))) * (theta1_0.elemul(&theta1_0).sum() + theta2_0.elemul(&theta2_0).sum())
+}
+
+/// compute log of each matrix element
 fn log(mat: &Matrix<f64>) -> Matrix<f64> {
     let (m, n) = dims(&mat);
-    let col_vec = mat.data().iter().map(|x| x.ln()).collect::<Vec<f64>>();
+    let col_vec = mat.iter().map(|x| x.ln()).collect::<Vec<f64>>();
     Matrix::new(m, n, col_vec)
 }
 
@@ -79,6 +115,21 @@ fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
             (i, v, vec)
         });
     res
+}
+
+/// sigmoid activation function
+fn sigmoid(n: &f64) -> f64 {
+    1.0f64/(1.0f64+((-n).exp()))
+}
+
+/// zero first column of matrix
+fn zero_first_col(mat: &Matrix<f64>) -> Matrix<f64> {
+    let (m, _n) = dims(&mat);
+    let mut out = mat.clone();
+    for i in 0..m {
+        out[[i, 0]] = 0f64;
+    }
+    out
 }
 
 /// add a column of ones to the start of a matrix
@@ -109,13 +160,8 @@ fn dims(mat: &Matrix<f64>) -> (usize, usize) {
     (mat.rows(), mat.cols())
 }
 
-/// Sigmoid Function
-fn sigmoid(n: &f64) -> f64 {
-    1.0/(1.0+((-n).exp()))
-}
-
-/// Read CSV into a matrix
-fn read_csv(file_path: &str, add_ones: bool) -> Matrix<f64> {
+/// read CSV into a matrix
+fn read_csv(file_path: &str) -> Matrix<f64> {
     // initialise some stuff
     let mut rdr = csv::Reader::from_file(file_path).unwrap().has_headers(false);
     let mut out: Vec<f64> = vec![]; // output vector
@@ -129,13 +175,6 @@ fn read_csv(file_path: &str, add_ones: bool) -> Matrix<f64> {
             Ok(res) => res,
             Err(err) => panic!("failed to read {}: {}", m, err)
         };
-
-        // prepend a one (for design matrix)
-        if add_ones {
-            let mut one: Vec<f64> = vec![1f64];
-            one.append(&mut row);
-            row = one;
-        }
 
         // compute number of columns
         n = row.len();

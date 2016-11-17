@@ -4,7 +4,7 @@ Some basic ML algorithms implemented in Rust, primarily as solutions to Andrew N
 
 ## Logistic Regression
 Binary classification with a log-likelihood cost function, and batch gradient descent.
-Usage - `cargo run ex2data1.txt <iters> <learning rate>` 
+Usage - `cargo run ex2data1.txt <iters> <learning rate>`
 e.g 150,000 iters and alpha=0.001 seems to work
 
 ## Neural Network (WIP)
@@ -14,7 +14,7 @@ e.g 150,000 iters and alpha=0.001 seems to work
 * ~~Allow CSV Importing of Pre-Trained Network Weights~~
 * ~~Unrolling / rolling of feature vectors into matrices~~
 * ~~Basic architecture with forward propagation to classify data~~
-* Implement cost function
+* ~~Implement cost function~~
 * Backpropagation to get gradients
 * Gradient descent to minimize cost function
 * Implement gradient checking to test if backprop is working.

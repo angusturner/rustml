@@ -1,8 +1,8 @@
 extern crate csv;
 extern crate rustc_serialize;
-extern crate nalgebra as na;
+extern crate rulinalg as rl:
 
-use na::{DMatrix, DVector, Transpose, max};
+use rl::matrix::{Matrix, BaseMatrix};
 
 fn main() {
     // Read in the data
@@ -38,16 +38,32 @@ fn main() {
     // compute accuracy
     let accuracy = (q as f64)/(m as f64);
 
+    // compute the cost / training error
+    let cost = cost_fn(&y2, &a3);
+
     // compute activations of the output
     println!("Training set accuracy: {}", accuracy);
 }
 
+/// log-likelihood cost function
+fn cost_fn(h: &Matrix<f64>, y: &Matrix<f64>) -> f64 {
+    let cost = y.data().dot(log(&h).data())+(y.add(-1f64)).data().dot((1f64-log(&h).data()));
+    cost
+}
+
+/// compute log on a matrix
+fn log(mat: &Matrix<f64>) -> Matrix<f64> {
+    let (m, n) = dims(&mat);
+    let col_vec = mat.data().iter().map(|x| x.ln()).collect::<Vec<f64>>();
+    Matrix::new(m, n, col_vec);
+}
+
 /// reduce a matrix into a vector containing the index of the maximum in every row
-fn row_max(mat: &DMatrix<f64>) -> Vec<i64> {
+fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
     let (m, n) = dims(&mat);
 
     // transpose, then convert to vector (column-major order)
-    let (_i, _v, res) = mat.transpose().as_vector().iter()
+    let (_i, _v, res) = mat.transpose().data().iter()
         // how to abuse reduce patterns
         .fold((0usize, 0f64, vec![0i64; m]), |acc, &val| {
             let (mut i, mut v, mut vec) = acc;
@@ -67,31 +83,31 @@ fn row_max(mat: &DMatrix<f64>) -> Vec<i64> {
 }
 
 /// add a column of ones to the start of a matrix
-fn add_ones(mat: &DMatrix<f64>) -> DMatrix<f64> {
+fn add_ones(mat: &Matrix<f64>) -> Matrix<f64> {
     let (m, n) = dims(&mat);
 
     // convert to DVector, iterate, dereference vals, collect into Vec (must be a better way...)
-    let mut col_vec = mat.as_vector().iter().map(|x| *x).collect::<Vec<f64>>();
+    let mut col_vec = mat.data().iter().map(|x| *x).collect::<Vec<f64>>();
     let mut ones = vec![1f64; m];
     ones.append(&mut col_vec);
 
-    DMatrix::from_column_vector(m, n+1, &ones)
+    Matrix::new(m, n+1, &ones)
 }
 
 /// apply a function to every element in a matrix
-fn apply(mat: &DMatrix<f64>, f: fn(n: &f64) -> f64) -> DMatrix<f64> {
+fn apply(mat: &Matrix<f64>, f: fn(n: &f64) -> f64) -> Matrix<f64> {
     // get dimensions
     let (m, n) = dims(&mat);
 
     // convert to column vector, iter, apply function, recollect into vec
-    let col_vec = mat.as_vector().iter().map(|x| f(x)).collect::<Vec<f64>>();
+    let col_vec = mat.data().iter().map(|x| f(x)).collect::<Vec<f64>>();
 
     // reshape into a matrix
-    DMatrix::from_column_vector(m, n, &col_vec)
+    Matrix::new(m, n, col_vec)
 }
 
 /// get matrix dimensions
-fn dims(mat: &DMatrix<f64>) -> (usize, usize) {
+fn dims(mat: &Matrix<f64>) -> (usize, usize) {
     (mat.nrows(), mat.ncols())
 }
 
@@ -101,7 +117,7 @@ fn sigmoid(n: &f64) -> f64 {
 }
 
 /// Read CSV into a matrix
-fn read_csv(file_path: &str, add_ones: bool) -> DMatrix<f64> {
+fn read_csv(file_path: &str, add_ones: bool) -> Matrix<f64> {
     // initialise some stuff
     let mut rdr = csv::Reader::from_file(file_path).unwrap().has_headers(false);
     let mut out: Vec<f64> = vec![]; // output vector
@@ -134,5 +150,5 @@ fn read_csv(file_path: &str, add_ones: bool) -> DMatrix<f64> {
     }
 
     // reshape data into matrix
-    DMatrix::from_row_vector(m, n, &out)
+    Matrix::from_row_vector(m, n, &out)
 }

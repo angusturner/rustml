@@ -6,4 +6,4 @@ authors = ["angusturner <angusturner27@gmail.com>"]
 [dependencies]
 csv = "0.14"
 rustc-serialize = "0.3"
-nalgebra = "0.10.*"
+rulinalg="0.3.6"

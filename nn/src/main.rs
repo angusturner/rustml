@@ -2,7 +2,7 @@ extern crate csv;
 extern crate rustc_serialize;
 extern crate rulinalg as rl;
 
-use rl::matrix::{Matrix, BaseMatrix};
+use rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
 
 #[allow(non_snake_case)]
 fn main() {
@@ -35,17 +35,8 @@ fn main() {
     let (s2, _) = dims(&theta1);
     let (s3, _) = dims(&theta2);
 
-    // compute activations of the hidden layer
-    let z2 = &X*&theta1.transpose();
-    let mut a2 = apply(&z2, sigmoid);
-    a2 = add_ones(&a2); // add bias units
-
-    // compute activations on the output layer
-    let z3 = &a2*&theta2.transpose();
-    let a3 = apply(&z3, sigmoid);
-
     // compute the predictions
-    let p = row_max(&a3);
+    let p = predict(&X, &theta1, &theta2);
 
     // compare predictions with the true values
     let mut q = 0;
@@ -60,7 +51,7 @@ fn main() {
 
     // compute the cost / training error
     let lambda = 1f64;
-    let cost = cost_fn(&a3, &y2, lambda, &theta1, &theta2);
+    let (cost, _theta1_grad, _theta2_grad) = cost_fn(&X, &y2, &theta1, &theta2, lambda);
 
     // debug output
     println!("Loaded m={} training examples with n={} features.", m, n-1);
@@ -69,22 +60,69 @@ fn main() {
     println!("Training set error (should be about 0.5): {:?}", cost);
 }
 
+/// generate predictions with neural net
+#[allow(non_snake_case)]
+fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i64> {
+    // compute activations on the hidden layer
+    let z2 = X*theta1.transpose();
+    let mut a2 = z2.apply(&sigmoid);
+    a2 = add_ones(&a2); // add bias units
+
+    // compute activations on the output layer
+    let z3 = a2*theta2.transpose();
+    let h = z3.apply(&sigmoid);
+
+    // get predictions by taking index of max val. in every row
+    row_max(&h)
+}
+
 /// regularized log-likelihood cost function
 #[allow(non_snake_case)]
-fn cost_fn(h: &Matrix<f64>, y: &Matrix<f64>, lambda: f64, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> f64 {
-    let (m, n) = dims(&y);
+fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>, lambda: f64)
+    -> (f64, Matrix<f64>, Matrix<f64>) {
+
+    // compute activations on the hidden layer
+    let z2 = X*theta1.transpose();
+    let mut a2 = z2.clone().apply(&sigmoid);
+    a2 = add_ones(&a2); // add bias units
+
+    // compute activations on the output layer
+    let z3 = &a2*theta2.transpose();
+    let h = z3.apply(&sigmoid);
+
+    // get dimensions of y
+    let (m, r) = dims(&y);
 
     // compute the cost: -1/m * [ sum ( y.*log(h) + (1-y).*log(1-h) ) ]
-    let ones: Matrix<f64> = Matrix::new(m, n, vec![1f64; m*n]); // needed because f64 - Matrix is not valid :(
-    let cost = y.elemul(&log(&h)) + (&ones-y).elemul(&log(&(&ones-h)));
-    let J: f64 = - cost.sum() / (m as f64); // switch signs, take the mean
+    let ones: Matrix<f64> = Matrix::new(m, r, vec![1f64; m*r]); // needed because f64 - Matrix is not valid :(
+    let cost = y.elemul(&log(&h)) + (&ones-y).elemul(&log(&(&ones-&h)));
+    let mut J: f64 = - cost.sum() / (m as f64); // switch signs, take the mean
 
-    // zero the bias units in the parameter matrices
+    // zero the bias unit columns in the parameter matrices
     let theta1_0 = zero_first_col(&theta1);
     let theta2_0 = zero_first_col(&theta2);
 
     // add regularization: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ]
-    J + (lambda/(2f64 * (m as f64))) * (theta1_0.elemul(&theta1_0).sum() + theta2_0.elemul(&theta2_0).sum())
+    J += (lambda/(2f64 * (m as f64))) * (theta1_0.elemul(&theta1_0).sum() + theta2_0.elemul(&theta2_0).sum());
+
+    // compute the errors on the output
+    let d3 = h - y;
+
+    // get a slice into theta2, with the first column (pertaining to bias units) removed
+    let theta2_1 = MatrixSlice::from_matrix(&theta2, [0, 1], theta2.rows(), theta2.cols()-1);
+
+    // compute errors on the hidden layer (does not include bias unit)
+    let d2 = (theta2_1.transpose()*d3.transpose()).transpose().elemul(&(z2.apply(&sigmoid_gradient)));
+
+    // compute gradients
+    let mut theta1_grad = d2.transpose()*(X / (m as f64));
+    let mut theta2_grad = d3.transpose()*(a2 / (m as f64));
+
+    // regularize gradients
+    theta1_grad += theta1_0 * (lambda/(m as f64));
+    theta2_grad += theta2_0 * (lambda/(m as f64));
+
+    (J, theta1_grad, theta2_grad)
 }
 
 /// compute log of each matrix element
@@ -117,9 +155,16 @@ fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
     res
 }
 
-/// sigmoid activation function
-fn sigmoid(n: &f64) -> f64 {
+/// sigmoid activation function g(z)
+fn sigmoid(n: f64) -> f64 {
     1.0f64/(1.0f64+((-n).exp()))
+}
+
+/// sigmoid gradient function
+/// g'(z) = a.*(1-a), where a = g(z)
+fn sigmoid_gradient(n: f64) -> f64 {
+    let a = sigmoid(n);
+    a*(1.0-a)
 }
 
 /// zero first column of matrix
@@ -141,18 +186,6 @@ fn add_ones(mat: &Matrix<f64>) -> Matrix<f64> {
     ones.append(&mut col_vec);
 
     Matrix::new(n+1, m, ones).transpose()
-}
-
-/// apply a function to every element in a matrix
-fn apply(mat: &Matrix<f64>, f: fn(n: &f64) -> f64) -> Matrix<f64> {
-    // get dimensions
-    let (m, n) = dims(&mat);
-
-    // convert to column vector, iter, apply function, recollect into vec
-    let col_vec = mat.data().iter().map(|x| f(x)).collect::<Vec<f64>>();
-
-    // reshape into a matrix
-    Matrix::new(m, n, col_vec)
 }
 
 /// get matrix dimensions

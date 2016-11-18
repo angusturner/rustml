@@ -37,32 +37,46 @@ fn main() {
     let (s2, _) = dims(&theta1);
     let (s3, _) = dims(&theta2);
 
+    // define the learning rate and regularization parameter
+    let alpha = 2.0_f64;
+    let lambda = 1.0_f64;
+
+    // initialize weights for a 3 layer network, with 25 units in the hidden layer
+    let (mut theta1_t, mut theta2_t) = init_weights(400, 25, 10);
+
+    // perform gradient descent
+    let mut tup: (f64, Matrix<f64>, Matrix<f64>) = cost_fn(&X, &y2, &theta1_t, &theta2_t, &lambda);
+    let mut cost_t = tup.0;
+    for _ in 0..450 {
+        tup = cost_fn(&X, &y2, &theta1_t, &theta2_t, &lambda);
+        cost_t = tup.0;
+        let (theta1_grad, theta2_grad) = (tup.1, tup.2);
+        theta1_t += - (theta1_grad * alpha);
+        theta2_t += - (theta2_grad * alpha);
+        println!("cost: {}", cost_t);
+    }
+
     // compute the predictions
-    let p = predict(&X, &theta1, &theta2);
+    let p = predict(&X, &theta1_t, &theta2_t);
 
     // compare predictions with the true values
     let mut q = 0;
     for i in 0..p.len() {
-        if y[[i,0]] == (p[i] + 1) as f64 {
+        // compare ith column of the row-vector y with the associated prediction
+        // note: since
+        if y[[i,0]] == p[i] as f64 {
             q += 1;
         }
     }
 
-    // compute accuracy
+    // calculate the accuracy
     let accuracy = (q as f64)/(m as f64);
-
-    // compute the cost / training error
-    let lambda = 1f64;
-    let (cost, _theta1_grad, _theta2_grad) = cost_fn(&X, &y2, &theta1, &theta2, &lambda);
-
-    // initialize some random network weights
-    let (mut theta1, mut theta2) = init_weights(401, 26, 10);
 
     // debug output
     println!("Loaded m={} training examples with n={} features.", m, n-1);
     println!("Network has {} neurons in the hidden layer, and {} outputs", s2, s3);
     println!("Training set accuracy (should be about 95%): {:?}", accuracy);
-    println!("Training set error (should be about 0.5): {:?}", cost);
+    println!("Training set error (should be about 0.5): {:?}", cost_t);
 }
 
 /// generate predictions with neural net
@@ -78,7 +92,7 @@ fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i
     let h = z3.apply(&sigmoid);
 
     // get predictions by taking index of max val. in every row
-    row_max(&h)
+    row_max(&h).iter().map(|x| x+1).collect::<Vec<i64>>()
 }
 
 /// for training, the parameter matrices theta1 and theta2 must be initialised with random values
@@ -88,7 +102,7 @@ fn init_weights(num_inputs: usize, num_hidden_layer: usize, num_outputs: usize) 
     let epsilon: f64 = 6f64.sqrt() / ((num_inputs+num_outputs) as f64).sqrt();
 
     // define function to generate rand value in desired range
-    let rand = |i: usize, j: usize| {
+    let rand = |_, _| {
         rand::thread_rng().gen::<f64>() * 2.0 * epsilon - epsilon
     };
 
@@ -97,23 +111,6 @@ fn init_weights(num_inputs: usize, num_hidden_layer: usize, num_outputs: usize) 
     let theta2 = Matrix::from_fn(num_outputs, num_hidden_layer+1, &rand);
 
     (theta1, theta2)
-}
-
-
-/// use two sided difference with the cost function to compare actual gradients with numerical estimation
-/// cost'(theta) = [ cost(theta+epsilon)-cost(theta-epsilon) ] / (2* epsilon), where epsilon ~ 10^-4
-fn grad_checking() {
-    // TODO
-}
-
-/// try minimising the cost function with grad descent
-fn grad_desc(theta1: &mut Matrix<f64>, theta2: &mut Matrix<f64>, alpha: f64) {
-    /*for i in 0..100 {
-        let (cost, theta1_grad, theta2_grad) = cost_fn(&X, &y, &theta1, &theta2, &lambda);
-        theta1 = theta1 - theta1_grad*&alpha;
-        theta2 = theta2 - theta2_grad*&alpha;
-        println!("{}", cost);
-    }*/
 }
 
 /// regularized log-likelihood cost function
@@ -263,3 +260,16 @@ fn read_csv(file_path: &str) -> Matrix<f64> {
     // reshape data into matrix
     Matrix::new(m, n, out)
 }
+
+// use two sided difference with the cost function to compare actual gradients with numerical estimation
+// cost'(theta) = [ cost(theta+epsilon)-cost(theta-epsilon) ] / (2* epsilon), where epsilon ~ 10^-4
+//fn grad_checking() {
+    // TODO
+//}
+
+// update the parameters with gradient descent
+//fn grad_desc(theta1_t: & mut Matrix<f64>, theta2_t: & mut Matrix<f64>, theta1_grad: &Matrix<f64>, theta2_grad: &Matrix<f64>, alpha: &f64) {
+    //let (t1_r, t1_c) = dims(&theta1_t);
+    //theta1_t = &mut (*theta1_t - (theta1_grad*alpha));
+    //theta2_t = &mut (*theta2_t - (theta2_grad*alpha));
+//}

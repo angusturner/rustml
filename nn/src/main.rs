@@ -53,7 +53,10 @@ fn main() {
 
     // compute the cost / training error
     let lambda = 1f64;
-    let (cost, _theta1_grad, _theta2_grad) = cost_fn(&X, &y2, &theta1, &theta2, lambda);
+    let (cost, _theta1_grad, _theta2_grad) = cost_fn(&X, &y2, &theta1, &theta2, &lambda);
+
+    // initialize some random network weights
+    let (mut theta1, mut theta2) = init_weights(401, 26, 10);
 
     // debug output
     println!("Loaded m={} training examples with n={} features.", m, n-1);
@@ -81,24 +84,18 @@ fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i
 /// for training, the parameter matrices theta1 and theta2 must be initialised with random values
 /// between -epsilon, epsilon where epsilon = sqrt(6) / sqrt(# input neurons + # output neurons)
 fn init_weights(num_inputs: usize, num_hidden_layer: usize, num_outputs: usize) -> (Matrix<f64>, Matrix<f64>)  {
-    // initialise RNG
-    let mut rng = rand::thread_rng();
-
     // compute epsilon
     let epsilon: f64 = 6f64.sqrt() / ((num_inputs+num_outputs) as f64).sqrt();
 
-    println!("Epsilon: {}", epsilon);
-
     // define function to generate rand value in desired range
-    fn rand(usize, usize) -> f64 {
-        rng.gen::<f64>() * 2 * epsilon - epsilon;
-    }
+    let rand = |i: usize, j: usize| {
+        rand::thread_rng().gen::<f64>() * 2.0 * epsilon - epsilon
+    };
 
     // use rand function to populate matrices
-    let theta1 = Matrix::from_fn(num_hidden_layer, num_inputs+1, rand);
-    let theta2 = Matrix::from_fn(num_outputs, num_hidden_layer+1, rand);
+    let theta1 = Matrix::from_fn(num_hidden_layer, num_inputs+1, &rand);
+    let theta2 = Matrix::from_fn(num_outputs, num_hidden_layer+1, &rand);
 
-    //
     (theta1, theta2)
 }
 
@@ -110,22 +107,19 @@ fn grad_checking() {
 }
 
 /// try minimising the cost function with grad descent
-fn grad_desc(init_theta1: Matrix<f64>, init_theta2: Matrix<f64>, theta1_grad: Matrix<f64>, theta2_grad: Matrix<f64>, alpha: f64)
-    -> (Matrix<f64>, Matrix<f64>) {
-
-    // try
-    for i in 0..100 {
-
-    }
-
-
-    (Matrix::new(2,2, vec![0f64; 4]), Matrix::new(2,2, vec![0f64; 4])) // just here so it compiles
+fn grad_desc(theta1: &mut Matrix<f64>, theta2: &mut Matrix<f64>, alpha: f64) {
+    /*for i in 0..100 {
+        let (cost, theta1_grad, theta2_grad) = cost_fn(&X, &y, &theta1, &theta2, &lambda);
+        theta1 = theta1 - theta1_grad*&alpha;
+        theta2 = theta2 - theta2_grad*&alpha;
+        println!("{}", cost);
+    }*/
 }
 
 /// regularized log-likelihood cost function
 /// returns the training error and the gradients wrt to each weight
 #[allow(non_snake_case)]
-fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>, lambda: f64)
+fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>, lambda: &f64)
     -> (f64, Matrix<f64>, Matrix<f64>) {
 
     // compute activations on the hidden layer

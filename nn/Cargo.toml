@@ -7,3 +7,4 @@ authors = ["angusturner <angusturner27@gmail.com>"]
 csv = "0.14"
 rustc-serialize = "0.3"
 rulinalg="0.3.6"
+rand="*"

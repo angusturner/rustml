@@ -1,7 +1,9 @@
 extern crate csv;
 extern crate rustc_serialize;
 extern crate rulinalg as rl;
+extern crate rand;
 
+use rand::Rng;
 use rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
 
 #[allow(non_snake_case)]
@@ -77,23 +79,44 @@ fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i
 }
 
 /// for training, the parameter matrices theta1 and theta2 must be initialised with random values
-/// between sqrt(6) / sqrt(input neurons + output neurons)
-fn initialize_weights() {
-    // TODO
+/// between -epsilon, epsilon where epsilon = sqrt(6) / sqrt(# input neurons + # output neurons)
+fn init_weights(num_inputs: usize, num_hidden_layer: usize, num_outputs: usize) -> (Matrix<f64>, Matrix<f64>)  {
+    // initialise RNG
+    let mut rng = rand::thread_rng();
+
+    // compute epsilon
+    let epsilon: f64 = 6f64.sqrt() / ((num_inputs+num_outputs) as f64).sqrt();
+
+    println!("Epsilon: {}", epsilon);
+
+    // define function to generate rand value in desired range
+    fn rand(usize, usize) -> f64 {
+        rng.gen::<f64>() * 2 * epsilon - epsilon;
+    }
+
+    // use rand function to populate matrices
+    let theta1 = Matrix::from_fn(num_hidden_layer, num_inputs+1, rand);
+    let theta2 = Matrix::from_fn(num_outputs, num_hidden_layer+1, rand);
+
+    //
+    (theta1, theta2)
 }
 
 
 /// use two sided difference with the cost function to compare actual gradients with numerical estimation
 /// cost'(theta) = [ cost(theta+epsilon)-cost(theta-epsilon) ] / (2* epsilon), where epsilon ~ 10^-4
 fn grad_checking() {
-
+    // TODO
 }
 
 /// try minimising the cost function with grad descent
-fn grad_desc(init_theta1: Matrix<f64>, init_theta2: Matrix<f64>, theta1_grad: Matrix<f64>, theta2_grad: Matrix<f64>)
+fn grad_desc(init_theta1: Matrix<f64>, init_theta2: Matrix<f64>, theta1_grad: Matrix<f64>, theta2_grad: Matrix<f64>, alpha: f64)
     -> (Matrix<f64>, Matrix<f64>) {
 
-    // TODO
+    // try
+    for i in 0..100 {
+
+    }
 
 
     (Matrix::new(2,2, vec![0f64; 4]), Matrix::new(2,2, vec![0f64; 4])) // just here so it compiles

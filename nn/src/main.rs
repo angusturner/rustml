@@ -76,7 +76,31 @@ fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i
     row_max(&h)
 }
 
+/// for training, the parameter matrices theta1 and theta2 must be initialised with random values
+/// between sqrt(6) / sqrt(input neurons + output neurons)
+fn initialize_weights() {
+    // TODO
+}
+
+
+/// use two sided difference with the cost function to compare actual gradients with numerical estimation
+/// cost'(theta) = [ cost(theta+epsilon)-cost(theta-epsilon) ] / (2* epsilon), where epsilon ~ 10^-4
+fn grad_checking() {
+
+}
+
+/// try minimising the cost function with grad descent
+fn grad_desc(init_theta1: Matrix<f64>, init_theta2: Matrix<f64>, theta1_grad: Matrix<f64>, theta2_grad: Matrix<f64>)
+    -> (Matrix<f64>, Matrix<f64>) {
+
+    // TODO
+
+
+    (Matrix::new(2,2, vec![0f64; 4]), Matrix::new(2,2, vec![0f64; 4])) // just here so it compiles
+}
+
 /// regularized log-likelihood cost function
+/// returns the training error and the gradients wrt to each weight
 #[allow(non_snake_case)]
 fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>, lambda: f64)
     -> (f64, Matrix<f64>, Matrix<f64>) {

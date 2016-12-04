@@ -37,24 +37,17 @@ fn main() {
     let (s2, _) = dims(&theta1);
     let (s3, _) = dims(&theta2);
 
-    // define the learning rate and regularization parameter
-    let alpha = 2.0_f64;
-    let lambda = 1.0_f64;
+    // define network and training parameters
+    let alpha = 2.0_f64; // learning rate
+    let lambda = 1.0_f64; // regularization parameter
+    let iters = 450_i32; // number of updates for gradient descent
+    let hidden_units = 25_usize; // # neurons in hidden layer
 
-    // initialize weights for a 3 layer network, with 25 units in the hidden layer
-    let (mut theta1_t, mut theta2_t) = init_weights(400, 25, 10);
+    // train the network with gradient descent
+    let (theta1_t, theta2_t) = grad_desc(&X, &y2, &alpha, &lambda, hidden_units, iters);
 
-    // perform gradient descent
-    let mut tup: (f64, Matrix<f64>, Matrix<f64>) = cost_fn(&X, &y2, &theta1_t, &theta2_t, &lambda);
-    let mut cost_t = tup.0;
-    for _ in 0..450 {
-        tup = cost_fn(&X, &y2, &theta1_t, &theta2_t, &lambda);
-        cost_t = tup.0;
-        let (theta1_grad, theta2_grad) = (tup.1, tup.2);
-        theta1_t += - (theta1_grad * alpha);
-        theta2_t += - (theta2_grad * alpha);
-        println!("cost: {}", cost_t);
-    }
+    // compute the final training cost
+    let (cost_t, _, _) = cost_fn(&X, &y2, &theta1_t, &theta2_t, &lambda);
 
     // compute the predictions
     let p = predict(&X, &theta1_t, &theta2_t);
@@ -79,6 +72,41 @@ fn main() {
     println!("Training set error (should be about 0.5): {:?}", cost_t);
 }
 
+/// vanilla gradient descent with early stopping, for a 3 layer neural net.
+/// X - design matrix
+/// y - response matrix, with each row entry encoded as a one-hot vector
+/// alpha - learning rate
+/// lambda - regularization parameter
+/// s2 - number of units (excluding bias unit) in the hidden layer
+/// iters - the number of update iterations to perform
+fn grad_desc(X: &Matrix<f64>, y: &Matrix<f64>, alpha: &f64, lambda: &f64, s2: usize, iters: i32)
+    -> (Matrix<f64>, Matrix<f64>) {
+
+    // determine number of input and output neurons from design / reponse matrices
+    let (_, n) = dims(&X); // n = number of features + 1
+    let (_, s3) = dims(&y);
+
+    // initialize weight matrices mapping input->hidden and hidden->output
+    let (mut theta1, mut theta2) = init_weights(n-1, s2, s3);
+
+    // perform gradient descent
+    let mut tup: (f64, Matrix<f64>, Matrix<f64>) = cost_fn(&X, &y, &theta1, &theta2, &lambda);
+    for _ in 0..iters {
+        tup = cost_fn(&X, &y, &theta1, &theta2, &lambda);
+        let (theta1_grad, theta2_grad) = (tup.1, tup.2);
+        theta1 += - (theta1_grad * alpha);
+        theta2 += - (theta2_grad * alpha);
+        println!("cost: {}", tup.0);
+    }
+
+    ( theta1, theta2 )
+}
+
+/// levenberg-marquardt optimization (TODO)
+//fn levenberg() {
+//
+//}
+
 /// generate predictions with neural net
 #[allow(non_snake_case)]
 fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i64> {
@@ -96,7 +124,7 @@ fn predict(X: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>) -> Vec<i
 }
 
 /// for training, the parameter matrices theta1 and theta2 must be initialised with random values
-/// between -epsilon, epsilon where epsilon = sqrt(6) / sqrt(# input neurons + # output neurons)
+/// in the range [-epsilon, epsilon] where epsilon = sqrt(6) / sqrt(# input neurons + # output neurons)
 fn init_weights(num_inputs: usize, num_hidden_layer: usize, num_outputs: usize) -> (Matrix<f64>, Matrix<f64>)  {
     // compute epsilon
     let epsilon: f64 = 6f64.sqrt() / ((num_inputs+num_outputs) as f64).sqrt();
@@ -265,11 +293,4 @@ fn read_csv(file_path: &str) -> Matrix<f64> {
 // cost'(theta) = [ cost(theta+epsilon)-cost(theta-epsilon) ] / (2* epsilon), where epsilon ~ 10^-4
 //fn grad_checking() {
     // TODO
-//}
-
-// update the parameters with gradient descent
-//fn grad_desc(theta1_t: & mut Matrix<f64>, theta2_t: & mut Matrix<f64>, theta1_grad: &Matrix<f64>, theta2_grad: &Matrix<f64>, alpha: &f64) {
-    //let (t1_r, t1_c) = dims(&theta1_t);
-    //theta1_t = &mut (*theta1_t - (theta1_grad*alpha));
-    //theta2_t = &mut (*theta2_t - (theta2_grad*alpha));
 //}

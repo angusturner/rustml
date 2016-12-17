@@ -29,6 +29,17 @@ fn main() {
     // plus an extra value corresponding the hidden layer bias neuron
     let theta2 = read_csv("theta2.csv");
 
+    // unroll the weight matrices into a single vector
+    let theta_vec = unroll_matrices(vec![&theta1, &theta2]);
+
+
+    println!("{:?}, {:?}", dims(&theta1), dims(&theta2));
+
+    // re-roll the parameter vector into constituent matrices
+    let matrices = roll_matrices(theta_vec, vec![(25, 401), (10, 26)]);
+    //assert_eq!(&theta1, &matrices[0]);
+    //assert_eq!(&theta2, &matrices[1]);
+
     // add a column of 1's to the design matrix
     X = add_ones(&X);
 
@@ -70,6 +81,29 @@ fn main() {
     println!("Network has {} neurons in the hidden layer, and {} outputs", s2, s3);
     println!("Training set accuracy (should be about 95%): {:?}", accuracy);
     println!("Training set error (should be about 0.5): {:?}", cost_t);
+}
+
+/// function to unroll supplied matrices into a single 1-dimensional vector
+pub fn unroll_matrices(matrices: Vec<&Matrix<f64>>) -> Vec<f64> {
+    let mut out = vec![];
+    for val in matrices {
+        out.append(&mut val.data().clone());
+    }
+    out
+}
+
+/// function to re-roll vector into its contituent matrices
+/// vector - all the network parameters unrolled into a single vector
+/// dimensions - a vector of dimension tuples, describing how to reconstruct the matrices
+fn roll_matrices( vector: Vec<f64>, dimensions: Vec<(usize, usize)> ) -> Vec<Matrix<f64>> {
+    let mut out = vec![];
+    let mut lower_bound = 0usize; // moving reference to the start index / lower bound
+    for i in 0..dimensions.len() {
+        let dims = dimensions[i];
+        out.push(Matrix::new(dims.0, dims.1, &vector[lower_bound .. dims.0*dims.1]));
+        lower_bound += dims.0*dims.1;
+    }
+    out
 }
 
 /// vanilla gradient descent with early stopping, for a 3 layer neural net.

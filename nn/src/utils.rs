@@ -1,8 +1,33 @@
 /// this module contains helper functions for matrix manipulation
-
 extern crate rulinalg as rl;
 
+use std::cmp;
 use self::rl::matrix::{Matrix, BaseMatrix};
+
+/// maps each value in an m x 1 matrix into a one-hot vector represenation, yielding an m x n
+/// matrix, where n is the number of output classes
+/// NOTE: assumes input classes are in f64 format, and indexed from 1
+pub fn one_hot(input: &Matrix<f64>) -> Matrix<f64> {
+    // determine the number of output classes by iterating over the input
+    let n: usize = input.iter().fold(0usize, |acc, &val| {
+        cmp::max(acc, val as usize) as usize
+    });
+
+    // get the input dimensions
+    let (m, _) = dims(&input);
+
+    // initialize a matrix of zeros
+    let mut out: Matrix<f64> = Matrix::zeros(m, n);
+
+    // fill in the ones
+    let mut j: usize = 0;
+    for i in 0..m {
+        j = (input[[i,0]] - 1f64) as usize; // NOTE: assumes classes start at one...
+        out[[i, j]] = 1f64;
+    }
+
+    out
+}
 
 /// compute the natural logarithm of each matrix element
 pub fn log(mat: &Matrix<f64>) -> Matrix<f64> {

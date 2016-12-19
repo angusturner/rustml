@@ -18,7 +18,12 @@ fn main() {
     let y = read_csv("output.csv");
 
     // response matrix m x r, mapping y(i) to a vector of r zeroes, with a 1 in the y(i)-th position
-    let y2 = read_csv("output_map.csv");
+    //let y2 = read_csv("output_map.csv");
+    //let y3 = one_hot(&y);
+    //assert_eq!(&y3, &y2);
+
+    // response matrix m x r, mapping y(i) to a vector of r zeroes, with a 1 in the y(i)-th position
+    let y2 = one_hot(&y);
 
     // weights mapping input features to the second (hidden) layer s2 x n+1,
     // where s2 is the number of neurons in layer 2, n+1 is the number of features plus an extra

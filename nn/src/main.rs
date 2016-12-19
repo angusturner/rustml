@@ -1,10 +1,11 @@
-extern crate csv;
-extern crate rustc_serialize;
 extern crate rulinalg as rl;
 extern crate rand;
+extern crate nn;
 
 use rand::Rng;
 use rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
+use nn::utils::*;
+use nn::io::{read_csv};
 
 #[allow(non_snake_case)]
 fn main() {
@@ -31,7 +32,6 @@ fn main() {
 
     // unroll the weight matrices into a single vector
     let theta_vec = unroll_matrices(vec![&theta1, &theta2]);
-
 
     println!("{:?}, {:?}, {:?}", dims(&theta1), dims(&theta2), theta_vec.len());
 
@@ -83,37 +83,6 @@ fn main() {
     println!("Training set error (should be about 0.5): {:?}", cost_t);
 }
 
-/// function to unroll supplied matrices into a single 1-dimensional vector
-pub fn unroll_matrices(matrices: Vec<&Matrix<f64>>) -> Vec<f64> {
-    let mut out = vec![];
-    for val in matrices {
-        out.append(&mut val.data().clone());
-    }
-    out
-}
-
-/// function to re-roll vector into its contituent matrices
-/// vector - all the network parameters unrolled into a single vector
-/// dimensions - a vector of dimension tuples, describing how to reconstruct the matrices
-fn roll_matrices( vector: Vec<f64>, dimensions: Vec<(usize, usize)> ) -> Vec<Matrix<f64>> {
-    let mut out = vec![];
-    let mut bounds = (0usize, 0usize); // moving reference to the lower and upper slice bounds
-    for i in 0..dimensions.len() {
-        // get the dimensions
-        let dims = dimensions[i];
-
-        // update the upper-bound
-        bounds.1 = bounds.0 + (dims.0*dims.1);
-
-        // construct the matrix
-        out.push(Matrix::new(dims.0, dims.1, &vector[bounds.0 .. bounds.1]));
-
-        // update lower bound
-        bounds.0 += dims.0*dims.1;
-    }
-    out
-}
-
 /// vanilla gradient descent with early stopping, for a 3 layer neural net.
 /// X - design matrix
 /// y - response matrix, with each row entry encoded as a one-hot vector
@@ -143,11 +112,6 @@ fn grad_desc(X: &Matrix<f64>, y: &Matrix<f64>, alpha: &f64, lambda: &f64, s2: us
 
     ( theta1, theta2 )
 }
-
-/// levenberg-marquardt optimization (TODO)
-//fn levenberg() {
-//
-//}
 
 /// generate predictions with neural net
 #[allow(non_snake_case)]
@@ -233,36 +197,6 @@ fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matr
     (J, theta1_grad, theta2_grad)
 }
 
-/// compute log of each matrix element
-fn log(mat: &Matrix<f64>) -> Matrix<f64> {
-    let (m, n) = dims(&mat);
-    let col_vec = mat.iter().map(|x| x.ln()).collect::<Vec<f64>>();
-    Matrix::new(m, n, col_vec)
-}
-
-/// reduce a matrix into a vector containing the index of the maximum in every row
-fn row_max(mat: &Matrix<f64>) -> Vec<i64> {
-    let (m, n) = dims(&mat);
-
-    // transpose, then convert to vector (column-major order)
-    let (_i, _v, res) = mat.iter()
-        // how to abuse reduce patterns
-        .fold((0usize, 0f64, vec![0i64; m]), |acc, &val| {
-            let (mut i, mut v, mut vec) = acc;
-            if &i % &n == 0 {
-                v = 0f64;
-            }
-            if val > v {
-                v = val;
-                let ind = &i/&n;
-                vec[ind] = (&i % &n) as i64;
-            }
-            i += 1;
-            (i, v, vec)
-        });
-    res
-}
-
 /// sigmoid activation function g(z)
 fn sigmoid(n: f64) -> f64 {
     1.0f64/(1.0f64+((-n).exp()))
@@ -274,65 +208,3 @@ fn sigmoid_gradient(n: f64) -> f64 {
     let a = sigmoid(n);
     a*(1.0-a)
 }
-
-/// zero first column of matrix
-fn zero_first_col(mat: &Matrix<f64>) -> Matrix<f64> {
-    let (m, _n) = dims(&mat);
-    let mut out = mat.clone();
-    for i in 0..m {
-        out[[i, 0]] = 0f64;
-    }
-    out
-}
-
-/// add a column of ones to the start of a matrix
-fn add_ones(mat: &Matrix<f64>) -> Matrix<f64> {
-    let (m, n) = dims(&mat);
-
-    let mut col_vec = mat.transpose().iter().map(|x| *x).collect::<Vec<f64>>();
-    let mut ones = vec![1f64; m];
-    ones.append(&mut col_vec);
-
-    Matrix::new(n+1, m, ones).transpose()
-}
-
-/// get matrix dimensions
-fn dims(mat: &Matrix<f64>) -> (usize, usize) {
-    (mat.rows(), mat.cols())
-}
-
-/// read CSV into a matrix
-fn read_csv(file_path: &str) -> Matrix<f64> {
-    // initialise some stuff
-    let mut rdr = csv::Reader::from_file(file_path).unwrap().has_headers(false);
-    let mut out: Vec<f64> = vec![]; // output vector
-    let mut m: usize = 0; // number of rows
-    let mut n: usize = 0; // number of cols
-
-    // iterate through records
-    for record in rdr.decode() {
-        // decode row into a vector
-        let mut row: Vec<f64> = match record {
-            Ok(res) => res,
-            Err(err) => panic!("failed to read {}: {}", m, err)
-        };
-
-        // compute number of columns
-        n = row.len();
-
-        // append row to output vector
-        out.append(&mut row);
-
-        // increment number of rows
-        m += 1usize;
-    }
-
-    // reshape data into matrix
-    Matrix::new(m, n, out)
-}
-
-// use two sided difference with the cost function to compare actual gradients with numerical estimation
-// cost'(theta) = [ cost(theta+epsilon)-cost(theta-epsilon) ] / (2* epsilon), where epsilon ~ 10^-4
-//fn grad_checking() {
-    // TODO
-//}

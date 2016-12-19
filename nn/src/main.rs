@@ -33,12 +33,12 @@ fn main() {
     let theta_vec = unroll_matrices(vec![&theta1, &theta2]);
 
 
-    println!("{:?}, {:?}", dims(&theta1), dims(&theta2));
+    println!("{:?}, {:?}, {:?}", dims(&theta1), dims(&theta2), theta_vec.len());
 
     // re-roll the parameter vector into constituent matrices
     let matrices = roll_matrices(theta_vec, vec![(25, 401), (10, 26)]);
-    //assert_eq!(&theta1, &matrices[0]);
-    //assert_eq!(&theta2, &matrices[1]);
+    assert_eq!(&theta1, &matrices[0]);
+    assert_eq!(&theta2, &matrices[1]);
 
     // add a column of 1's to the design matrix
     X = add_ones(&X);
@@ -97,11 +97,19 @@ pub fn unroll_matrices(matrices: Vec<&Matrix<f64>>) -> Vec<f64> {
 /// dimensions - a vector of dimension tuples, describing how to reconstruct the matrices
 fn roll_matrices( vector: Vec<f64>, dimensions: Vec<(usize, usize)> ) -> Vec<Matrix<f64>> {
     let mut out = vec![];
-    let mut lower_bound = 0usize; // moving reference to the start index / lower bound
+    let mut bounds = (0usize, 0usize); // moving reference to the lower and upper slice bounds
     for i in 0..dimensions.len() {
+        // get the dimensions
         let dims = dimensions[i];
-        out.push(Matrix::new(dims.0, dims.1, &vector[lower_bound .. dims.0*dims.1]));
-        lower_bound += dims.0*dims.1;
+
+        // update the upper-bound
+        bounds.1 = bounds.0 + (dims.0*dims.1);
+
+        // construct the matrix
+        out.push(Matrix::new(dims.0, dims.1, &vector[bounds.0 .. bounds.1]));
+
+        // update lower bound
+        bounds.0 += dims.0*dims.1;
     }
     out
 }

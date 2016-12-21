@@ -27,10 +27,10 @@ also be considered.
 * [X] Backpropagation to get gradients
 * [X] Gradient descent to minimize cost function
 * [X] Add regularization to prevent overfitting
-* [] Refactor to allow arbitrary number of layers and neurons
-* [] Pull Logistic Regression algorithm into separate repo
-* [] Implement gradient checking to verify backprop implementation.
-* [] Ability to save trained weights in CSV
-* [] Configurable activation functions (per layer?)
-* [] Better optimisation functions (Levenberg-Marquardt?)
-* [] Add unit tests
+* [ ] Refactor to allow arbitrary number of layers and neurons
+* [ ] Pull Logistic Regression algorithm into separate repo
+* [ ] Implement gradient checking to verify backprop implementation.
+* [ ] Ability to save trained weights in CSV
+* [ ] Configurable activation functions (per layer?)
+* [ ] Better optimisation functions (Levenberg-Marquardt?)
+* [ ] Add unit tests

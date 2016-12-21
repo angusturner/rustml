@@ -9,20 +9,28 @@ e.g 150,000 iters and alpha=0.001 seems to work
 
 ## Neural Network
 
-A simple neural network with 1 hidden layer.
+A basic multilayer perceptron for solving classification problems. Originally ported from Matlab,
+as a solution to a project from Andrew Ngs Machine Learning course. I am now in the process of
+generalising the solution to allow arbitrary network architectures, and configurable activation
+functions. More sophisticated optimisation algorithms (other than batch gradient descent), may
+also be considered.
 
 ### Usage
-`cargo run`
+`cargo run --release`
 
 ### Plan
 
-* ~~Allow CSV Importing of Pre-Trained Network Weights~~
-* ~~Unrolling / rolling of feature vectors into matrices~~
-* ~~Basic architecture with forward propagation to classify data~~
-* ~~Implement cost function~~
-* ~~Backpropagation to get gradients~~
-* ~~Gradient descent to minimize cost function~~
-* ~~Add regularization to prevent overfitting~~
-* Implement gradient checking to verify backprop implementation.
-* Ability to save trained weights in CSV
-* Add better optimisation functions
+* [X] Allow CSV Importing of Pre-Trained Network Weights
+* [X] Unrolling / rolling of feature vectors into matrices
+* [X] Basic 1-layer architecture with forward propagation to classify data
+* [X] Implement cost function
+* [X] Backpropagation to get gradients
+* [X] Gradient descent to minimize cost function
+* [X] Add regularization to prevent overfitting
+* [] Refactor to allow arbitrary number of layers and neurons
+* [] Pull Logistic Regression algorithm into separate repo
+* [] Implement gradient checking to verify backprop implementation.
+* [] Ability to save trained weights in CSV
+* [] Configurable activation functions (per layer?)
+* [] Better optimisation functions (Levenberg-Marquardt?)
+* [] Add unit tests

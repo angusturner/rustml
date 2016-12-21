@@ -10,13 +10,6 @@ use nn::nn::{NN};
 
 #[allow(non_snake_case)]
 fn main() {
-    // create a NN with 10 inputs, 5 outputs
-    let mut test_net = NN::new(10, 5)
-    .add_layer(5) // add a 5-neuron hidden layer
-    .finalize();
-
-    println!("{:?}", test_net.get_weights());
-
     // design matrix m x n, where m = training examples, n = number of features
     let mut X = read_csv("input.csv");
 
@@ -47,6 +40,8 @@ fn main() {
     // unroll the weight matrices into a single vector
     let theta_vec = unroll_matrices(vec![&theta1, &theta2]);
 
+    let X_1 = X.clone();
+
     // re-roll the parameter vector into constituent matrices
     //let matrices = roll_matrices(theta_vec, vec![(25, 401), (10, 26)]);
     //assert_eq!(&theta1, &matrices[0]);
@@ -63,7 +58,7 @@ fn main() {
     // define network and training parameters
     let alpha = 2.0_f64; // learning rate
     let lambda = 1.0_f64; // regularization parameter
-    let iters = 450_i32; // number of updates for gradient descent
+    let iters = 50_i32; // number of updates for gradient descent
     let hidden_units = 25_usize; // # neurons in hidden layer
 
     // train the network with gradient descent
@@ -87,6 +82,17 @@ fn main() {
 
     // calculate the accuracy
     let accuracy = (q as f64)/(m as f64);
+
+    // create a NN
+    let mut test_net = NN::new(400, 10)
+    .add_layer(25) // add a 25 neuron hidden layer
+    .finalize();
+
+    // 
+    let p2 = test_net.train(&X_1, &y2, &alpha, &lambda, 400, vec![theta1_t, theta2_t]);
+    assert_eq!(&p2, &p);
+
+    println!("{:?}", test_net.get_weights());
 
     // debug output
     println!("Loaded m={} training examples with n={} features.", m, n-1);

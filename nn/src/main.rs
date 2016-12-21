@@ -6,9 +6,17 @@ use rand::Rng;
 use rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
 use nn::utils::*;
 use nn::io::{read_csv};
+use nn::nn::{NN};
 
 #[allow(non_snake_case)]
 fn main() {
+    // create a NN with 10 inputs, 5 outputs
+    let mut test_net = NN::new(10, 5)
+    .add_layer(5) // add a 5-neuron hidden layer
+    .finalize();
+
+    println!("{:?}", test_net.get_weights());
+
     // design matrix m x n, where m = training examples, n = number of features
     let mut X = read_csv("input.csv");
 
@@ -39,12 +47,10 @@ fn main() {
     // unroll the weight matrices into a single vector
     let theta_vec = unroll_matrices(vec![&theta1, &theta2]);
 
-    println!("{:?}, {:?}, {:?}", dims(&theta1), dims(&theta2), theta_vec.len());
-
     // re-roll the parameter vector into constituent matrices
-    let matrices = roll_matrices(theta_vec, vec![(25, 401), (10, 26)]);
-    assert_eq!(&theta1, &matrices[0]);
-    assert_eq!(&theta2, &matrices[1]);
+    //let matrices = roll_matrices(theta_vec, vec![(25, 401), (10, 26)]);
+    //assert_eq!(&theta1, &matrices[0]);
+    //assert_eq!(&theta2, &matrices[1]);
 
     // add a column of 1's to the design matrix
     X = add_ones(&X);

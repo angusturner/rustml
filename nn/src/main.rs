@@ -88,8 +88,8 @@ fn main() {
     .add_layer(25) // add a 25 neuron hidden layer
     .finalize();
 
-    // 
-    let p2 = test_net.train(&X_1, &y2, &alpha, &lambda, 400, vec![theta1_t, theta2_t]);
+    //
+    let p2 = test_net.train(&X_1, &y2, &alpha, &lambda, 400); //vec![theta1_t, theta2_t]);
     assert_eq!(&p2, &p);
 
     println!("{:?}", test_net.get_weights());

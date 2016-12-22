@@ -58,7 +58,7 @@ fn main() {
     // define network and training parameters
     let alpha = 2.0_f64; // learning rate
     let lambda = 1.0_f64; // regularization parameter
-    let iters = 50_i32; // number of updates for gradient descent
+    let iters = 10_i32; // number of updates for gradient descent
     let hidden_units = 25_usize; // # neurons in hidden layer
 
     // train the network with gradient descent
@@ -87,12 +87,13 @@ fn main() {
     let mut test_net = NN::new(400, 10)
     .add_layer(25) // add a 25 neuron hidden layer
     .finalize();
+    //.train(&X, &y, &alpha, &lambda, 400);
 
     //
     let p2 = test_net.train(&X_1, &y2, &alpha, &lambda, 400); //vec![theta1_t, theta2_t]);
-    assert_eq!(&p2, &p);
+    //assert_eq!(&p2, &p);
 
-    println!("{:?}", test_net.get_weights());
+    //println!("{:?}", test_net.get_weights());
 
     // debug output
     println!("Loaded m={} training examples with n={} features.", m, n-1);

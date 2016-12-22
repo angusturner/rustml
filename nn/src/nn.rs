@@ -1,7 +1,9 @@
 extern crate rulinalg as rl;
+extern crate rand;
 
 use self::rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
 use utils::{dims, add_ones, row_max, log, zero_first_col};
+use self::rand::Rng;
 
 pub struct NN {
     num_inputs: usize,
@@ -11,11 +13,16 @@ pub struct NN {
     gradients: Vec<Matrix<f64>>,
     activations: Vec<Matrix<f64>>,
     raw_activations: Vec<Matrix<f64>>,
+    epsilon: f64
 }
 
 impl NN {
     /// static constructor function
     pub fn new(num_inputs: usize, num_outputs: usize) -> NN {
+        // compute epsilon, which is used as a lower and upper bounds
+        // in the random weight initialisation
+        let epsilon = 6f64.sqrt() / ((num_inputs+num_outputs) as f64).sqrt();
+
         NN {
             num_inputs: num_inputs,
             num_outputs: num_outputs,
@@ -23,7 +30,8 @@ impl NN {
             weights: vec![],
             gradients: vec![],
             activations: vec![],
-            raw_activations: vec![]
+            raw_activations: vec![],
+            epsilon: epsilon
         }
     }
 
@@ -47,7 +55,7 @@ impl NN {
 
         // create a new vector of weight matrices
         let mut new_weights = self.weights.clone();
-        new_weights.push(Matrix::zeros(neurons, n));
+        new_weights.push(self.init_weights(neurons, n));
 
         // return a new NN with the new weight vector
         // NOTE: avoids mutability and allows method chaining
@@ -58,7 +66,8 @@ impl NN {
             weights: new_weights,
             gradients: self.gradients.clone(),
             activations: self.activations.clone(),
-            raw_activations: self.raw_activations.clone()
+            raw_activations: self.raw_activations.clone(),
+            epsilon: self.epsilon
         }
     }
 
@@ -70,7 +79,7 @@ impl NN {
 
         // create a new vector of weight matrices
         let mut new_weights = self.weights.clone();
-        new_weights.push(Matrix::zeros(self.num_outputs, n));
+        new_weights.push(self.init_weights(self.num_outputs, n));
 
         // return a new NN with the new weight vector
         // NOTE: avoids mutability and allows method chaining
@@ -82,8 +91,24 @@ impl NN {
             weights: new_weights,
             gradients: self.gradients.clone(),
             activations: self.activations.clone(),
-            raw_activations: self.raw_activations.clone()
+            raw_activations: self.raw_activations.clone(),
+            epsilon: self.epsilon
         }
+    }
+
+    /// parameter matrices must be initialised with random values in the range [-epsilon, epsilon]
+    /// where epsilon = sqrt(6) / sqrt(# input neurons + # output neurons)
+    fn init_weights(&self, rows: usize, cols: usize) -> Matrix<f64> {
+        // get epsilon
+        let epsilon: f64 = self.epsilon;
+
+        // define closure to generate rand value in desired range, capturing epsilon
+        let rand = |_, _| {
+            rand::thread_rng().gen::<f64>() * 2.0 * epsilon - epsilon
+        };
+
+        // use rand function to populate matrices
+        Matrix::from_fn(rows, cols, &rand)
     }
 
     /// train the neural net using batch gradient descent
@@ -96,36 +121,46 @@ impl NN {
         // <DEBUG>
         // self.weights = weights;
 
-        // compute network activations and get the hypothesis
-        let h = self.forward_prop(&X);
+        // gradient descent
+        for _ in 0..max_iters {
+            // compute network activations and get the hypothesis
+            let h = self.forward_prop(&X);
 
-        // get the dimensions of the response matrix
-        let (m, r) = dims(&y);
+            // get the dimensions of the response matrix
+            let (m, r) = dims(&y);
 
-        // compute the log-likelihood cost: -1/m * [ sum ( y.*log(h) + (1-y).*log(1-h) ) ]
-        let ones: Matrix<f64> = Matrix::new(m, r, vec![1f64; m*r]);
-        let cost = y.elemul(&log(&h)) + (&ones-y).elemul(&log(&(&ones-&h)));
-        let mut J: f64 = - cost.sum() / (m as f64); // switch signs, take the mean
+            // compute the log-likelihood cost: -1/m * [ sum ( y.*log(h) + (1-y).*log(1-h) ) ]
+            let ones: Matrix<f64> = Matrix::new(m, r, vec![1f64; m*r]);
+            let cost = y.elemul(&log(&h)) + (&ones-y).elemul(&log(&(&ones-&h)));
+            let mut J: f64 = - cost.sum() / (m as f64); // switch signs, take the mean
 
-        // take the sum of the all the network parameters squared (excluding bias units)
-        let sum_square_params = self.weights.iter().fold(0f64, |acc, theta| {
-            let theta_0 = zero_first_col(&theta); // zero bias unit column
-            acc + theta_0.elemul(&theta_0).sum()
-        });
+            // take the sum of the all the network parameters squared (excluding bias units)
+            let sum_square_params = self.weights.iter().fold(0f64, |acc, theta| {
+                let theta_0 = zero_first_col(&theta); // zero bias unit column
+                acc + theta_0.elemul(&theta_0).sum()
+            });
 
-        // add regularization to cost: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ... etc. ]
-        J += (lambda/(2f64 * (m as f64))) * sum_square_params;
+            // add regularization to cost: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ... etc. ]
+            J += (lambda/(2f64 * (m as f64))) * sum_square_params;
 
-        // compute the gradients using back_prop
-        self.back_prop(&y, &h);
+            println!("The cost is {}", J);
 
-        //row_max(&self.activations.last().unwrap()).iter().map(|x| x+1).collect::<Vec<i64>>()
+            // compute the gradients using back_prop
+            self.back_prop(&y, &h, &lambda);
+
+            println!("{}", self.gradients.clone().len());
+
+            // update the weights
+            /*for i in 0..self.weights.len() {
+                self.weights[i] += - (self.gradients[i].clone() * alpha);
+            }*/
+        }
     }
 
     // compute the error gradients for the network
     // y - response matrix
     // h - hypothesis
-    fn back_prop(&mut self, y: &Matrix<f64>, h: &Matrix<f64>) {
+    fn back_prop(&mut self, y: &Matrix<f64>, h: &Matrix<f64>, lambda: &f64) {
         // compute errors on output
         let mut d = y - h;
 
@@ -135,10 +170,13 @@ impl NN {
         // propagate backwards through network
         let mut errors = vec![d.clone()];
 
+        println!("{}", self.weights.len());
+
         // iterate backwards through network to compute hidden layer errors
-        //let mut theta: Matrix<f64>;
-        //let mut z: Matrix<f64>;
-        for i in self.weights.len()-1..0 {
+        for i in self.weights.len()..0 {
+            println!("made it here");
+
+
             // get the weights, and remove the first column pertaining to bias units
             let theta = self.weights[i].clone();
             let theta_1 = MatrixSlice::from_matrix(&theta, [0, 1], theta.rows(), theta.cols()-1);
@@ -158,61 +196,17 @@ impl NN {
         for i in 0..errors.len() {
             let d = errors[i].clone();
             let a = self.activations[i].clone();
-            let theta_grad = d.transpose() * (a / (m as f64));
+            let mut theta_grad = d.transpose() * (a / (m as f64));
+            let theta_0 = zero_first_col(&self.weights[i]);
+            theta_grad += theta_0 * (lambda/(m as f64));
             self.gradients.push(theta_grad);
         }
     }
 
-    /*fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matrix<f64>, lambda: &f64)
-        -> (f64, Matrix<f64>, Matrix<f64>) {
-
-        // compute activations on the hidden layer
-        let z2 = X*theta1.transpose();
-        let mut a2 = z2.clone().apply(&sigmoid);
-        a2 = add_ones(&a2); // add bias units
-
-        // compute activations on the output layer
-        let z3 = &a2*theta2.transpose();
-        let h = z3.apply(&sigmoid);
-
-        // get dimensions of y
-        let (m, r) = dims(&y);
-
-        // compute the cost: -1/m * [ sum ( y.*log(h) + (1-y).*log(1-h) ) ]
-        let ones: Matrix<f64> = Matrix::new(m, r, vec![1f64; m*r]); // needed because f64 - Matrix is not valid :(
-        let cost = y.elemul(&log(&h)) + (&ones-y).elemul(&log(&(&ones-&h)));
-        let mut J: f64 = - cost.sum() / (m as f64); // switch signs, take the mean
-
-        // zero the bias unit columns in the parameter matrices
-        let theta1_0 = zero_first_col(&theta1);
-        let theta2_0 = zero_first_col(&theta2);
-
-        // add regularization: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ]
-        J += (lambda/(2f64 * (m as f64))) * (theta1_0.elemul(&theta1_0).sum() + theta2_0.elemul(&theta2_0).sum());
-
-        // compute the errors on the output
-        let d3 = h - y;
-
-        // get a slice into theta2, with the first column (pertaining to bias units) removed
-        let theta2_1 = MatrixSlice::from_matrix(&theta2, [0, 1], theta2.rows(), theta2.cols()-1);
-
-        // compute errors on the hidden layer (does not include bias unit)
-        let d2 = (theta2_1.transpose()*d3.transpose()).transpose().elemul(&(z2.apply(&sigmoid_gradient)));
-
-        // compute gradients
-        let mut theta1_grad = d2.transpose()*(X / (m as f64));
-        let mut theta2_grad = d3.transpose()*(a2 / (m as f64));
-
-        // regularize gradients
-        theta1_grad += theta1_0 * (lambda/(m as f64));
-        theta2_grad += theta2_0 * (lambda/(m as f64));
-
-        (J, theta1_grad, theta2_grad)
-    }*/
-
     /// use the trained weights to generate predictions
-    pub fn predict(&self, test_set: Matrix<f64>) {
-
+    pub fn predict(&mut self, X: Matrix<f64>) -> Vec<i64> {
+        let h = self.forward_prop(&X);
+        row_max(&h).iter().map(|x| x+1).collect::<Vec<i64>>()
     }
 
     // given a matrix of training examples, compute activations for the network using forward prop

@@ -90,6 +90,7 @@ fn main() {
     //.train(&X, &y, &alpha, &lambda, 400);
 
     //
+    let alpha: f64 = 2.0;
     let p2 = test_net.train(&X_1, &y2, &alpha, &lambda, 400); //vec![theta1_t, theta2_t]);
     //assert_eq!(&p2, &p);
 
@@ -118,9 +119,12 @@ fn grad_desc(X: &Matrix<f64>, y: &Matrix<f64>, alpha: &f64, lambda: &f64, s2: us
 
     // initialize weight matrices mapping input->hidden and hidden->output
     let (mut theta1, mut theta2) = init_weights(n-1, s2, s3);
+    println!("Dimensions of parameter matrices: {:?}, {:?}", dims(&theta1), dims(&theta2));
+
 
     // perform gradient descent
     let mut tup: (f64, Matrix<f64>, Matrix<f64>) = cost_fn(&X, &y, &theta1, &theta2, &lambda);
+    println!("Dimensions of gradient matrices: {:?}, {:?}", dims(&tup.1), dims(&tup.2));
     for _ in 0..iters {
         tup = cost_fn(&X, &y, &theta1, &theta2, &lambda);
         let (theta1_grad, theta2_grad) = (tup.1, tup.2);
@@ -205,8 +209,10 @@ fn cost_fn(X: &Matrix<f64>, y: &Matrix<f64>, theta1: &Matrix<f64>, theta2: &Matr
     // compute errors on the hidden layer (does not include bias unit)
     let d2 = (theta2_1.transpose()*d3.transpose()).transpose().elemul(&(z2.apply(&sigmoid_gradient)));
 
+
     // compute gradients
     let mut theta1_grad = d2.transpose()*(X / (m as f64));
+    println!("{:?}, {:?}", dims(&d2), dims(&theta1_grad));
     let mut theta2_grad = d3.transpose()*(a2 / (m as f64));
 
     // regularize gradients

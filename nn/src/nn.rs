@@ -148,13 +148,33 @@ impl NN {
             // compute the gradients using back_prop
             self.back_prop(&y, &h, &lambda);
 
-            println!("{}", self.gradients.clone().len());
+            //println!("{}, {}", self.gradients.clone().len(), self.weights.clone().len());
+
+            // print out the dimensions of each of the the things
+            let things = vec![
+                ("Weights", self.weights.clone()),
+                ("Activations", self.activations.clone()),
+                ("Raw Activations", self.raw_activations.clone()),
+                ("Gradients", self.gradients.clone())
+            ];
+            for thing in things {
+                println!("{}: {:?}", thing.0, NN::dims_all(&thing.1));
+            };
+            //println!("Weights: {:?}", NN::dims_all(&self.weights.clone()));
+
 
             // update the weights
-            /*for i in 0..self.weights.len() {
+            for i in 0..self.weights.len() {
                 self.weights[i] += - (self.gradients[i].clone() * alpha);
-            }*/
+            }
         }
+    }
+
+    // print all the dimensions of a vector of matrices for debugging
+    fn dims_all(input: &Vec<Matrix<f64>>) -> Vec<(usize, usize)> {
+        input.iter().map(|matrix| {
+            dims(&matrix)
+        }).collect::<Vec<(usize, usize)>>()
     }
 
     // compute the error gradients for the network
@@ -170,33 +190,35 @@ impl NN {
         // propagate backwards through network
         let mut errors = vec![d.clone()];
 
-        println!("{}", self.weights.len());
-
         // iterate backwards through network to compute hidden layer errors
-        for i in self.weights.len()..0 {
-            println!("made it here");
-
-
+        let mut i = self.weights.len() - 1;
+        while i > 0 {
             // get the weights, and remove the first column pertaining to bias units
             let theta = self.weights[i].clone();
             let theta_1 = MatrixSlice::from_matrix(&theta, [0, 1], theta.rows(), theta.cols()-1);
 
             // get the linear activations
-            let z = self.raw_activations[i].clone();
+            let z = self.raw_activations[i-1].clone();
+
+            //println!("{:?}, {:?}, {:?}", dims(&theta), dims(&z), dims(&d));
 
             // compute the errors
-            d = (theta_1.transpose() * d.clone().transpose())
-                .transpose().elemul(&(z.apply(&sigmoid_gradient)));
+            d = (theta_1.transpose() * d.clone().transpose()) // -> layer_size x training examples
+                .transpose().elemul(&(z.apply(&sigmoid_gradient))); // ->
 
             errors.push(d.clone());
+
+            i = i - 1;
         }
 
         // reverse the error vector and iterate back through, computing the parameter gradients
+        self.gradients = vec![];
         errors.reverse();
+        println!("{:?}", errors.clone().len());
         for i in 0..errors.len() {
             let d = errors[i].clone();
             let a = self.activations[i].clone();
-            let mut theta_grad = d.transpose() * (a / (m as f64));
+            let mut theta_grad = d.transpose() * (add_ones(&a) / (m as f64));
             let theta_0 = zero_first_col(&self.weights[i]);
             theta_grad += theta_0 * (lambda/(m as f64));
             self.gradients.push(theta_grad);
@@ -212,7 +234,8 @@ impl NN {
     // given a matrix of training examples, compute activations for the network using forward prop
     fn forward_prop(&mut self, X: &Matrix<f64>) -> Matrix<f64> {
         let mut a = X.clone(); // reference to activations of previous layer
-        self.activations.push(a.clone());
+        self.activations = vec![a.clone()];
+        self.raw_activations = vec![];
         for theta in self.weights.iter() {
             // add bias column to activations, and compute linear activation with weights
             let z = add_ones(&a)*theta.transpose();

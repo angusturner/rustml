@@ -89,9 +89,25 @@ fn main() {
     .finalize();
     //.train(&X, &y, &alpha, &lambda, 400);
 
-    //
-    let alpha: f64 = 2.0;
-    let p2 = test_net.train(&X_1, &y2, &alpha, &lambda, 400); //vec![theta1_t, theta2_t]);
+    // train the network
+    test_net.train(&X_1, &y2, &alpha, &lambda, 200); //vec![theta1_t, theta2_t]);
+
+    // compute predictions
+    let p2 = test_net.predict(&X_1);
+
+    // compare predictions with the true values
+    let mut q = 0;
+    for i in 0..p2.len() {
+        // compare ith column of the row-vector y with the associated prediction
+        // note: since
+        if y[[i,0]] == p2[i] as f64 {
+            q += 1;
+        }
+    }
+
+    // calculate the accuracy
+    let accuracy = (q as f64)/(m as f64);
+
     //assert_eq!(&p2, &p);
 
     //println!("{:?}", test_net.get_weights());

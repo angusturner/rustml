@@ -53,9 +53,13 @@ impl NN {
             n = self.weights[i].rows() + 1;
         }
 
-        // create a new vector of weight matrices
+        // initialise a matrix of random weights, mapping previous layer to current one
         let mut new_weights = self.weights.clone();
         new_weights.push(self.init_weights(neurons, n));
+
+        // allocate space on the heap for the corresponding parameter gradients
+        let mut new_grads = self.gradients.clone();
+        new_grads.push(Matrix::zeros(neurons, n));
 
         // return a new NN with the new weight vector
         // NOTE: avoids mutability and allows method chaining
@@ -64,7 +68,7 @@ impl NN {
             num_outputs: self.num_outputs,
             num_hidden_layers: self.num_hidden_layers + 1,
             weights: new_weights,
-            gradients: self.gradients.clone(),
+            gradients: new_grads,
             activations: self.activations.clone(),
             raw_activations: self.raw_activations.clone(),
             epsilon: self.epsilon
@@ -151,7 +155,7 @@ impl NN {
             //println!("{}, {}", self.gradients.clone().len(), self.weights.clone().len());
 
             // print out the dimensions of each of the the things
-            let things = vec![
+            /*let things = vec![
                 ("Weights", self.weights.clone()),
                 ("Activations", self.activations.clone()),
                 ("Raw Activations", self.raw_activations.clone()),
@@ -159,9 +163,8 @@ impl NN {
             ];
             for thing in things {
                 println!("{}: {:?}", thing.0, NN::dims_all(&thing.1));
-            };
+            };*/
             //println!("Weights: {:?}", NN::dims_all(&self.weights.clone()));
-
 
             // update the weights
             for i in 0..self.weights.len() {
@@ -182,7 +185,7 @@ impl NN {
     // h - hypothesis
     fn back_prop(&mut self, y: &Matrix<f64>, h: &Matrix<f64>, lambda: &f64) {
         // compute errors on output
-        let mut d = y - h;
+        let mut d = h - y;
 
         // get number of training examples
         let (m, _) = dims(&y);
@@ -200,12 +203,13 @@ impl NN {
             // get the linear activations
             let z = self.raw_activations[i-1].clone();
 
-            //println!("{:?}, {:?}, {:?}", dims(&theta), dims(&z), dims(&d));
+            //println!("{}, {:?}, {:?}, {:?}", &i, dims(&theta), dims(&z), dims(&d));
 
             // compute the errors
-            d = (theta_1.transpose() * d.clone().transpose()) // -> layer_size x training examples
-                .transpose().elemul(&(z.apply(&sigmoid_gradient))); // ->
+            d = (theta_1.transpose() * d.clone().transpose()) // -> layer_size x m
+                .transpose().elemul(&(z.apply(&sigmoid_gradient))); // -> m x layer size
 
+            //
             errors.push(d.clone());
 
             i = i - 1;
@@ -214,7 +218,7 @@ impl NN {
         // reverse the error vector and iterate back through, computing the parameter gradients
         self.gradients = vec![];
         errors.reverse();
-        println!("{:?}", errors.clone().len());
+        //println!("{:?}", errors.clone().len());
         for i in 0..errors.len() {
             let d = errors[i].clone();
             let a = self.activations[i].clone();
@@ -226,7 +230,7 @@ impl NN {
     }
 
     /// use the trained weights to generate predictions
-    pub fn predict(&mut self, X: Matrix<f64>) -> Vec<i64> {
+    pub fn predict(&mut self, X: &Matrix<f64>) -> Vec<i64> {
         let h = self.forward_prop(&X);
         row_max(&h).iter().map(|x| x+1).collect::<Vec<i64>>()
     }
@@ -244,11 +248,11 @@ impl NN {
             self.raw_activations.push(z.clone());
 
             // apply activation function
-            a = z.clone().apply(&sigmoid);
+            a = z.apply(&sigmoid);
             self.activations.push(a.clone());
         }
 
-        // return the final layer (the hypothesis)
+        // return the output activations
         a
     }
 }

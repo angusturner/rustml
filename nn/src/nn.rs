@@ -126,10 +126,11 @@ impl NN {
         // self.weights = weights;
 
         // gradient descent
-        for _ in 0..max_iters {
+        for iter in 0..max_iters {
             // compute network activations and get the hypothesis
             let h = self.forward_prop(&X);
 
+            /*
             // get the dimensions of the response matrix
             let (m, r) = dims(&y);
 
@@ -146,8 +147,10 @@ impl NN {
 
             // add regularization to cost: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ... etc. ]
             J += (lambda/(2f64 * (m as f64))) * sum_square_params;
+            */
 
-            println!("The cost is {}", J);
+            println!("Iter {}", iter);
+            //println!("The cost is {}", J);
 
             // compute the gradients using back_prop
             self.back_prop(&y, &h, &lambda);
@@ -197,7 +200,7 @@ impl NN {
         let mut i = self.weights.len() - 1;
         while i > 0 {
             // get the weights, and remove the first column pertaining to bias units
-            let theta = self.weights[i].clone();
+            let ref theta = self.weights[i];
             let theta_1 = MatrixSlice::from_matrix(&theta, [0, 1], theta.rows(), theta.cols()-1);
 
             // get the linear activations
@@ -220,8 +223,8 @@ impl NN {
         errors.reverse();
         //println!("{:?}", errors.clone().len());
         for i in 0..errors.len() {
-            let d = errors[i].clone();
-            let a = self.activations[i].clone();
+            let ref d = errors[i];
+            let ref a = self.activations[i];
             let mut theta_grad = d.transpose() * (add_ones(&a) / (m as f64));
             let theta_0 = zero_first_col(&self.weights[i]);
             theta_grad += theta_0 * (lambda/(m as f64));

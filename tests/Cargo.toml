@@ -1,0 +1,7 @@
+[package]
+name = "tests"
+version = "0.1.0"
+authors = ["angusturner <angusturner27@gmail.com>"]
+
+[dependencies]
+rulinalg="0.3.6"

@@ -29,7 +29,7 @@ impl NN {
             num_hidden_layers: 0usize,
             weights: vec![],
             gradients: vec![],
-            activations: vec![],
+            activations: vec![Matrix::zeros(0,0)],
             raw_activations: vec![],
             epsilon: epsilon
         }
@@ -61,6 +61,12 @@ impl NN {
         let mut new_grads = self.gradients.clone();
         new_grads.push(Matrix::zeros(neurons, n));
 
+        // allocate new vector entries for activation matrices
+        let mut new_activations = self.activations.clone();
+        new_activations.push(Matrix::zeros(0,0));
+        let mut new_raw_activations = self.raw_activations.clone();
+        new_raw_activations.push(Matrix::zeros(0,0));
+
         // return a new NN with the new weight vector
         // NOTE: avoids mutability and allows method chaining
         NN {
@@ -69,8 +75,8 @@ impl NN {
             num_hidden_layers: self.num_hidden_layers + 1,
             weights: new_weights,
             gradients: new_grads,
-            activations: self.activations.clone(),
-            raw_activations: self.raw_activations.clone(),
+            activations: new_activations,
+            raw_activations: new_raw_activations,
             epsilon: self.epsilon
         }
     }
@@ -85,17 +91,27 @@ impl NN {
         let mut new_weights = self.weights.clone();
         new_weights.push(self.init_weights(self.num_outputs, n));
 
+        // allocate space on the heap for the corresponding parameter gradients
+        let mut new_grads = self.gradients.clone();
+        new_grads.push(Matrix::zeros(self.num_outputs, n));
+
+        // allocate new vector entries for activation matrices
+        let mut new_activations = self.activations.clone();
+        new_activations.push(Matrix::zeros(0,0));
+        let mut new_raw_activations = self.raw_activations.clone();
+        new_raw_activations.push(Matrix::zeros(0,0));
+
         // return a new NN with the new weight vector
         // NOTE: avoids mutability and allows method chaining
         // TODO: avoid code duplication!
         NN {
             num_inputs: self.num_inputs,
             num_outputs: self.num_outputs,
-            num_hidden_layers: self.num_hidden_layers + 1,
+            num_hidden_layers: self.num_hidden_layers,
             weights: new_weights,
-            gradients: self.gradients.clone(),
-            activations: self.activations.clone(),
-            raw_activations: self.raw_activations.clone(),
+            gradients: new_grads,
+            activations: new_activations,
+            raw_activations: new_raw_activations,
             epsilon: self.epsilon
         }
     }
@@ -122,15 +138,14 @@ impl NN {
     /// alpha - learning rate
     /// max_iters - number of iterations of gradient descent to perform
     pub fn train(&mut self, X: &Matrix<f64>, y: &Matrix<f64>, alpha: &f64, lambda: &f64, max_iters: usize) { //, weights: Vec<Matrix<f64>>) -> Vec<i64> {
-        // <DEBUG>
-        // self.weights = weights;
+        // set the input activations to the input matrix, and initialise other activations
+        self.activations[0] = X.clone();
 
         // gradient descent
         for iter in 0..max_iters {
             // compute network activations and get the hypothesis
             let h = self.forward_prop(&X);
 
-            /*
             // get the dimensions of the response matrix
             let (m, r) = dims(&y);
 
@@ -147,10 +162,9 @@ impl NN {
 
             // add regularization to cost: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ... etc. ]
             J += (lambda/(2f64 * (m as f64))) * sum_square_params;
-            */
 
-            println!("Iter {}", iter);
-            //println!("The cost is {}", J);
+            // print the cost
+            println!("Cost {}", J);
 
             // compute the gradients using back_prop
             self.back_prop(&y, &h, &lambda);
@@ -170,8 +184,8 @@ impl NN {
             //println!("Weights: {:?}", NN::dims_all(&self.weights.clone()));
 
             // update the weights
-            for i in 0..self.weights.len() {
-                self.weights[i] += - (self.gradients[i].clone() * alpha);
+            for i in 0..self.num_hidden_layers+1 {
+                self.weights[i] += - (&self.gradients[i] * alpha);
             }
         }
     }
@@ -190,14 +204,21 @@ impl NN {
         // compute errors on output
         let mut d = h - y;
 
-        // get number of training examples
-        let (m, _) = dims(&y);
+        // get the number of training examples, m
+        let m = y.rows();
+
+        // compute gradients for final parameter matrix
+        let mut i = self.num_hidden_layers;
+        let mut a = &self.activations[i];
+        let mut theta_grad = d.transpose() * (add_ones(&a) / (m as f64));
+        let mut theta_0 = zero_first_col(&self.weights[i]);
+        theta_grad += theta_0 * (lambda/(m as f64));
+        self.gradients[i] = theta_grad;
 
         // propagate backwards through network
         let mut errors = vec![d.clone()];
 
         // iterate backwards through network to compute hidden layer errors
-        let mut i = self.weights.len() - 1;
         while i > 0 {
             // get the weights, and remove the first column pertaining to bias units
             let ref theta = self.weights[i];
@@ -206,29 +227,20 @@ impl NN {
             // get the linear activations
             let z = self.raw_activations[i-1].clone();
 
-            //println!("{}, {:?}, {:?}, {:?}", &i, dims(&theta), dims(&z), dims(&d));
-
             // compute the errors
-            d = (theta_1.transpose() * d.clone().transpose()) // -> layer_size x m
+            d = (theta_1.transpose() * &d.transpose()) // -> layer_size x m
                 .transpose().elemul(&(z.apply(&sigmoid_gradient))); // -> m x layer size
 
-            //
-            errors.push(d.clone());
+            // compute the gradients
+            a = &self.activations[i-1];
+            theta_grad = d.transpose() * (add_ones(&a) / (m as f64));
+
+            // regularize gradients and update `self`
+            theta_0 = zero_first_col(&self.weights[i-1]);
+            theta_grad += theta_0 * (lambda/(m as f64));
+            self.gradients[i-1] = theta_grad;
 
             i = i - 1;
-        }
-
-        // reverse the error vector and iterate back through, computing the parameter gradients
-        self.gradients = vec![];
-        errors.reverse();
-        //println!("{:?}", errors.clone().len());
-        for i in 0..errors.len() {
-            let ref d = errors[i];
-            let ref a = self.activations[i];
-            let mut theta_grad = d.transpose() * (add_ones(&a) / (m as f64));
-            let theta_0 = zero_first_col(&self.weights[i]);
-            theta_grad += theta_0 * (lambda/(m as f64));
-            self.gradients.push(theta_grad);
         }
     }
 
@@ -240,23 +252,24 @@ impl NN {
 
     // given a matrix of training examples, compute activations for the network using forward prop
     fn forward_prop(&mut self, X: &Matrix<f64>) -> Matrix<f64> {
-        let mut a = X.clone(); // reference to activations of previous layer
-        self.activations = vec![a.clone()];
-        self.raw_activations = vec![];
+        let mut i: usize = 0;
+        //let mut a = &self.activations[i]; // reference to activations of previous layer
         for theta in self.weights.iter() {
             // add bias column to activations, and compute linear activation with weights
-            let z = add_ones(&a)*theta.transpose();
+            let z = add_ones(&self.activations[i])*theta.transpose();
 
             // push raw activations to vector
-            self.raw_activations.push(z.clone());
+            self.raw_activations[i] = z.clone();
 
             // apply activation function
-            a = z.apply(&sigmoid);
-            self.activations.push(a.clone());
+            self.activations[i+1] = z.apply(&sigmoid);
+            //a = &self.activations[i+1];
+
+            i += 1;
         }
 
         // return the output activations
-        a
+        self.activations[i].clone()
     }
 }
 

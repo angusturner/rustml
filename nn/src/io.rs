@@ -4,7 +4,7 @@ extern crate csv;
 extern crate rustc_serialize;
 extern crate rulinalg as rl;
 
-use self::rl::matrix::{Matrix};
+use self::rl::matrix::Matrix;
 
 /// read CSV into a matrix
 pub fn read_csv(file_path: &str) -> Matrix<f64> {
@@ -19,7 +19,7 @@ pub fn read_csv(file_path: &str) -> Matrix<f64> {
         // decode row into a vector
         let mut row: Vec<f64> = match record {
             Ok(res) => res,
-            Err(err) => panic!("failed to read {}: {}", m, err)
+            Err(err) => panic!("failed to read {}: {}", m, err),
         };
 
         // compute number of columns

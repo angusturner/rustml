@@ -9,9 +9,7 @@ use self::rl::matrix::{Matrix, BaseMatrix};
 /// NOTE: assumes input classes are in f64 format, and indexed from 1
 pub fn one_hot(input: &Matrix<f64>) -> Matrix<f64> {
     // determine the number of output classes by iterating over the input
-    let n: usize = input.iter().fold(0usize, |acc, &val| {
-        cmp::max(acc, val as usize) as usize
-    });
+    let n: usize = input.iter().fold(0usize, |acc, &val| cmp::max(acc, val as usize) as usize);
 
     // get the input dimensions
     let (m, _) = dims(&input);
@@ -22,7 +20,7 @@ pub fn one_hot(input: &Matrix<f64>) -> Matrix<f64> {
     // fill in the ones
     let mut j: usize = 0;
     for i in 0..m {
-        j = (input[[i,0]] - 1f64) as usize; // NOTE: assumes classes start at one...
+        j = (input[[i, 0]] - 1f64) as usize; // NOTE: assumes classes start at one...
         out[[i, j]] = 1f64;
     }
 
@@ -77,7 +75,7 @@ pub fn add_ones(mat: &Matrix<f64>) -> Matrix<f64> {
     let mut ones = vec![1f64; m];
     ones.append(&mut col_vec);
 
-    Matrix::new(n+1, m, ones).transpose()
+    Matrix::new(n + 1, m, ones).transpose()
 }
 
 /// get matrix dimensions
@@ -97,7 +95,7 @@ pub fn unroll_matrices(matrices: Vec<&Matrix<f64>>) -> Vec<f64> {
 /// function to re-roll vector into its contituent matrices
 /// vector - all the network parameters unrolled into a single vector
 /// dimensions - a vector of dimension tuples, describing how to reconstruct the matrices
-pub fn roll_matrices( vector: Vec<f64>, dimensions: Vec<(usize, usize)> ) -> Vec<Matrix<f64>> {
+pub fn roll_matrices(vector: Vec<f64>, dimensions: Vec<(usize, usize)>) -> Vec<Matrix<f64>> {
     let mut out = vec![];
     let mut bounds = (0usize, 0usize); // moving reference to the lower and upper slice bounds
     for i in 0..dimensions.len() {
@@ -105,13 +103,13 @@ pub fn roll_matrices( vector: Vec<f64>, dimensions: Vec<(usize, usize)> ) -> Vec
         let dims = dimensions[i];
 
         // update the upper-bound
-        bounds.1 = bounds.0 + (dims.0*dims.1);
+        bounds.1 = bounds.0 + (dims.0 * dims.1);
 
         // construct the matrix
-        out.push(Matrix::new(dims.0, dims.1, &vector[bounds.0 .. bounds.1]));
+        out.push(Matrix::new(dims.0, dims.1, &vector[bounds.0..bounds.1]));
 
         // update lower bound
-        bounds.0 += dims.0*dims.1;
+        bounds.0 += dims.0 * dims.1;
     }
     out
 }

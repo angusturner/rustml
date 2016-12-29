@@ -45,18 +45,17 @@ pub fn matrix_get_dims() {
     let mut ones: Matrix<f64> = Matrix::ones(5000, 400);
     let mut zeros: Matrix<f64> = Matrix::zeros(5000, 400);
     ones.data().len();
-    //ones.cols();
+    // ones.cols();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use test::Bencher;
-    use rl::matrix::{Matrix};
+    use rl::matrix::Matrix;
 
     #[test]
-    fn it_works() {
-    }
+    fn it_works() {}
 
     #[bench]
     fn bench_matrix_clone(b: &mut Bencher) {

@@ -19,12 +19,8 @@ fn main() {
     let y = read_csv("output.csv");
 
     // response matrix m x r, mapping y(i) to a vector of r zeroes, with a 1 in the y(i)-th position
-    // let y2 = read_csv("output_map.csv");
-    // let y3 = one_hot(&y);
-    // assert_eq!(&y3, &y2);
-
-    // response matrix m x r, mapping y(i) to a vector of r zeroes, with a 1 in the y(i)-th position
     // i.e. each row mapped to a one-hot vector representation
+    // let y2 = read_csv("output_map.csv");
     let y2 = one_hot(&y);
 
     // weights mapping input features to the second (hidden) layer s2 x n+1,
@@ -37,15 +33,8 @@ fn main() {
     // plus an extra value corresponding the hidden layer bias neuron
     let theta2 = read_csv("theta2.csv");
 
-    // unroll the weight matrices into a single vector
-    let theta_vec = unroll_matrices(vec![&theta1, &theta2]);
-
+    // store a copy of the design matrix without the added bias units
     let X_1 = X.clone();
-
-    // re-roll the parameter vector into constituent matrices
-    // let matrices = roll_matrices(theta_vec, vec![(25, 401), (10, 26)]);
-    // assert_eq!(&theta1, &matrices[0]);
-    // assert_eq!(&theta2, &matrices[1]);
 
     // add a column of 1's to the design matrix
     X = add_ones(&X);
@@ -58,7 +47,7 @@ fn main() {
     // define network and training parameters
     let alpha = 2.0_f64; // learning rate
     let lambda = 1.0_f64; // regularization parameter
-    let iters = 450_i32; // number of updates for gradient descent
+    let iters = 2000_i32; // number of updates for gradient descent
     let hidden_units = 25_usize; // # neurons in hidden layer
 
     // train the network with gradient descent
@@ -70,24 +59,11 @@ fn main() {
     // compute the predictions
     let p = predict(&X, &theta1_t, &theta2_t);
 
+    // compute the accuracy
     let y_vec: &Vec<f64> = y.data();
     let accuracy: f64 = accuracy(&p, y_vec);
 
-    // compare predictions with the true values
-    // let mut q = 0;
-    // for i in 0..p.len() {
-    // compare ith column of the row-vector y with the associated prediction
-    // note: since
-    // if y[[i, 0]] == p[i] as f64 {
-    // q += 1;
-    // }
-    // }
-    //
-    // calculate the accuracy
-    // let accuracy = (q as f64) / (m as f64);
-    //
-
-    // create a NN
+    // NOTE: this is the same as above, but implemented as a struct in nn.rs
     // let mut test_net = NN::new(400, 10)
     // .add_layer(25) // add a 25 neuron hidden layer
     // .finalize();
@@ -100,36 +76,17 @@ fn main() {
     // let p2 = test_net.predict(&X_1);
     //
     // compute the accuracy
-    //
-    // compare predictions with the true values
-    // let mut q = 0;
-    // for i in 0..p2.len() {
-    // compare ith column of the row-vector y with the associated prediction
-    // note: since
-    // if y[[i, 0]] == p2[i] as f64 {
-    // q += 1;
-    // }
-    // }
-    //
-    // calculate the accuracy
-    // let accuracy = (q as f64) / (m as f64);
-    //
-    //
+    // let accuracy: f64 = accuracy(&p2, y_vec);
 
     // assert_eq!(&p2, &p);
 
     // println!("{:?}", test_net.get_weights());
 
     // debug output
-    println!("Loaded m={} training examples with n={} features.",
-             m,
-             n - 1);
-    println!("Network has {} neurons in the hidden layer, and {} outputs",
-             s2,
-             s3);
-    println!("Training set accuracy (should be about 95%): {:?}",
-             accuracy);
-    println!("Training set error (should be about 0.5): {:?}", cost_t);
+    println!("Loaded m={} training examples with n={} features.", m, n - 1);
+    println!("{} neurons in the hidden layer, and {} outputs", s2, s3);
+    println!("Training set accuracy: {:?}", accuracy);
+    println!("Training set error: {:?}", cost_t);
 }
 
 /// compute the accuracy by mapping the labels and corresponding predictions

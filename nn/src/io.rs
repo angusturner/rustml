@@ -1,5 +1,4 @@
 /// this module will contain functions for importing and exporting data
-
 extern crate csv;
 extern crate rustc_serialize;
 extern crate rulinalg as rl;

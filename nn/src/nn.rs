@@ -1,3 +1,5 @@
+// This module contains a generalized version of the procedural neural net code in main.rs,
+// allowing for arbitrary network architectures etc. Needs work.
 extern crate rulinalg as rl;
 extern crate rand;
 

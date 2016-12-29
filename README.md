@@ -7,6 +7,19 @@ Binary classification with a log-likelihood cost function, and batch gradient de
 Usage - `cargo run ex2data1.txt <iters> <learning rate>`
 e.g 150,000 iters and alpha=0.001 seems to work
 
+## Kmeans Clustering
+An implementation of unsupervised clustering.
+
+### Progress
+
+* [X] Import data from CSV
+* [X] Random centroid initialization
+* [X] Cluster assignment step
+* [ ] Centroid calculation
+* [ ] Minimize cost function over multiple centroid initializations
+* [ ] Add unit tests
+
+
 ## Neural Network
 
 A basic multilayer perceptron for solving classification problems. Originally ported from Matlab,
@@ -15,10 +28,7 @@ generalising the solution to allow arbitrary network architectures, and configur
 functions. More sophisticated optimisation algorithms (other than batch gradient descent), may
 also be considered.
 
-### Usage
-`cargo run --release`
-
-### Plan
+### Progress
 
 * [X] Allow CSV Importing of Pre-Trained Network Weights
 * [X] Unrolling / rolling of feature vectors into matrices
@@ -27,8 +37,8 @@ also be considered.
 * [X] Backpropagation to get gradients
 * [X] Gradient descent to minimize cost function
 * [X] Add regularization to prevent overfitting
-* [ ] Refactor to allow arbitrary number of layers and neurons
-* [ ] Pull Logistic Regression algorithm into separate repo
+* [X] Refactor to allow arbitrary number of layers and neurons
+* [ ] Performance Enhancements for Generalized Algorithm
 * [ ] Implement gradient checking to verify backprop implementation.
 * [ ] Ability to save trained weights in CSV
 * [ ] Configurable activation functions (per layer?)

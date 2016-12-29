@@ -1,1 +1,0 @@
-{"rustc":16976481629965514181,"target":17652865149623143607,"profile":295375401175610095,"local":{"variant":"Precalculated","fields":["0.4.0"]},"features":"None","deps":[["matrixmultiply v0.1.13",17371115433055537164],["num v0.1.36",3722516203725659926]],"rustflags":[]}

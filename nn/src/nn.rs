@@ -159,10 +159,12 @@ impl NN {
             let mut J: f64 = -cost.sum() / (m as f64); // switch signs, take the mean
 
             // take the sum of the all the network parameters squared (excluding bias units)
-            let sum_square_params = self.weights.iter().fold(0f64, |acc, theta| {
-                let theta_0 = zero_first_col(&theta); // zero bias unit column
-                acc + theta_0.elemul(&theta_0).sum()
-            });
+            let sum_square_params = self.weights
+                .iter()
+                .fold(0f64, |acc, theta| {
+                    let theta_0 = zero_first_col(&theta); // zero bias unit column
+                    acc + theta_0.elemul(&theta_0).sum()
+                });
 
             // add regularization to cost: lambda/2m * [ sum(theta1.^2) + sum(theta2.^2) ... etc. ]
             J += (lambda / (2f64 * (m as f64))) * sum_square_params;
@@ -268,7 +270,7 @@ impl NN {
             a = add_ones(&a);
 
             // apply activation function
-            self.activations[i+1] = a.clone();
+            self.activations[i + 1] = a.clone();
 
             i += 1;
         }

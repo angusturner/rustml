@@ -58,7 +58,7 @@ fn main() {
     // define network and training parameters
     let alpha = 2.0_f64; // learning rate
     let lambda = 1.0_f64; // regularization parameter
-    let iters = 10_i32; // number of updates for gradient descent
+    let iters = 450_i32; // number of updates for gradient descent
     let hidden_units = 25_usize; // # neurons in hidden layer
 
     // train the network with gradient descent
@@ -70,45 +70,51 @@ fn main() {
     // compute the predictions
     let p = predict(&X, &theta1_t, &theta2_t);
 
-    // compare predictions with the true values
-    let mut q = 0;
-    for i in 0..p.len() {
-        // compare ith column of the row-vector y with the associated prediction
-        // note: since
-        if y[[i, 0]] == p[i] as f64 {
-            q += 1;
-        }
-    }
+    let y_vec: &Vec<f64> = y.data();
+    let accuracy: f64 = accuracy(&p, y_vec);
 
+    // compare predictions with the true values
+    // let mut q = 0;
+    // for i in 0..p.len() {
+    // compare ith column of the row-vector y with the associated prediction
+    // note: since
+    // if y[[i, 0]] == p[i] as f64 {
+    // q += 1;
+    // }
+    // }
+    //
     // calculate the accuracy
-    let accuracy = (q as f64) / (m as f64);
+    // let accuracy = (q as f64) / (m as f64);
+    //
 
     // create a NN
-    let mut test_net = NN::new(400, 10)
-    .add_layer(25) // add a 25 neuron hidden layer
-    .finalize();
+    // let mut test_net = NN::new(400, 10)
+    // .add_layer(25) // add a 25 neuron hidden layer
+    // .finalize();
     // .train(&X, &y, &alpha, &lambda, 400);
-
+    //
     // train the network
-    test_net.train(&X_1, &y2, &alpha, &lambda, 200); //vec![theta1_t, theta2_t]);
-
+    // test_net.train(&X_1, &y2, &alpha, &lambda, 200); //vec![theta1_t, theta2_t]);
+    //
     // compute predictions
-    let p2 = test_net.predict(&X_1);
-
+    // let p2 = test_net.predict(&X_1);
+    //
     // compute the accuracy
-
+    //
     // compare predictions with the true values
-    let mut q = 0;
-    for i in 0..p2.len() {
-        // compare ith column of the row-vector y with the associated prediction
-        // note: since
-        if y[[i, 0]] == p2[i] as f64 {
-            q += 1;
-        }
-    }
-
+    // let mut q = 0;
+    // for i in 0..p2.len() {
+    // compare ith column of the row-vector y with the associated prediction
+    // note: since
+    // if y[[i, 0]] == p2[i] as f64 {
+    // q += 1;
+    // }
+    // }
+    //
     // calculate the accuracy
-    let accuracy = (q as f64) / (m as f64);
+    // let accuracy = (q as f64) / (m as f64);
+    //
+    //
 
     // assert_eq!(&p2, &p);
 
@@ -126,9 +132,19 @@ fn main() {
     println!("Training set error (should be about 0.5): {:?}", cost_t);
 }
 
-/// function to compute the accuracy
-fn accuracy<A, T>(pred: Vec<A>, y: Vec<T>) -> f64 {
-    0f64
+/// compute the accuracy by mapping the labels and corresponding predictions
+/// to an iter of booleans, and then computing the fraction of `true` entries
+fn accuracy(pred: &Vec<i64>, y: &Vec<f64>) -> f64 {
+    let (correct, total) = pred.iter()
+        .zip(y)
+        .map(|(a, b)| (*a as f64) == *b)
+        .fold((0f64, 0f64), |(correct, total), val| {
+            match val {
+                true => (correct + 1.0, total + 1.0),
+                false => (correct, total + 1.0),
+            }
+        });
+    correct / total
 }
 
 /// vanilla gradient descent with early stopping, for a 3 layer neural net.
@@ -221,6 +237,7 @@ fn cost_fn(X: &Matrix<f64>,
     // compute activations on the hidden layer
     let z2 = X * theta1.transpose();
     let mut a2 = z2.clone().apply(&sigmoid);
+    let a2_no_bias = a2.clone();
     a2 = add_ones(&a2); // add bias units
 
     // compute activations on the output layer
@@ -250,14 +267,15 @@ fn cost_fn(X: &Matrix<f64>,
     let theta2_1 = MatrixSlice::from_matrix(&theta2, [0, 1], theta2.rows(), theta2.cols() - 1);
 
     // compute errors on the hidden layer (does not include bias unit)
-    let d2 =
-        (theta2_1.transpose() * d3.transpose()).transpose().elemul(&(z2.apply(&sigmoid_gradient)));
-
+    // let d2 =
+    //  (theta2_1.transpose() * d3.transpose()).transpose().elemul(&(z2.apply(&sigmoid_gradient)));
+    let sigmoid_test = a2_no_bias.apply(&sigmoid_gradient2);
+    let d2 = (theta2_1.transpose() * d3.transpose()).transpose().elemul(&sigmoid_test);
 
     // compute gradients
     let mut theta1_grad = d2.transpose() * (X / (m as f64));
     // println!("{:?}, {:?}", dims(&d2), dims(&theta1_grad));
-    let mut theta2_grad = d3.transpose() * (a2 / (m as f64));
+    let mut theta2_grad = d3.transpose() * (&a2 / (m as f64));
 
     // regularize gradients
     theta1_grad += theta1_0 * (lambda / (m as f64));
@@ -275,5 +293,9 @@ fn sigmoid(n: f64) -> f64 {
 /// g'(z) = a.*(1-a), where a = g(z)
 fn sigmoid_gradient(n: f64) -> f64 {
     let a = sigmoid(n);
+    a * (1.0 - a)
+}
+
+fn sigmoid_gradient2(a: f64) -> f64 {
     a * (1.0 - a)
 }

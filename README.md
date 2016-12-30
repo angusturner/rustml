@@ -8,15 +8,18 @@ Usage - `cargo run ex2data1.txt <iters> <learning rate>`
 e.g 150,000 iters and alpha=0.001 seems to work
 
 ## Kmeans Clustering
-An implementation of unsupervised clustering.
+An implementation of unsupervised clustering with kmeans.
 
 ### Progress
 
 * [X] Import data from CSV
 * [X] Random centroid initialization
 * [X] Cluster assignment step
-* [ ] Centroid calculation
+* [X] Centroid calculation
+* [ ] Random data splitting (test/cv/train)
+* [ ] kmeans++ initialization
 * [ ] Minimize cost function over multiple centroid initializations
+* [ ] Try cluster assignment with correct labels, and check prediction accuracy
 * [ ] Add unit tests
 
 

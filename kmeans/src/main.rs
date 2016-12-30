@@ -6,7 +6,7 @@ extern crate rand;
 
 use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
-use rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
+use rl::matrix::{Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut, RowMut, MatrixSliceMut};
 use kmeans::utils::*;
 use kmeans::io::read_csv;
 use std::f64;
@@ -25,16 +25,50 @@ fn main() {
     let mut p: Matrix<f64> = initialize_centroids(10, &X);
 
     // assign every training example to its nearest cluster
-    let c: Vec<usize> = assign_to_clusters(&p, &X);
+    let mut c: Vec<usize> = assign_to_clusters(&p, &X);
 
-    // recompute the centroids based on the assigned training examples
-    // NOTE: if no training examples are assigned, randomly re-initialize ?
-    p = compute_centroids(&c, &X);
+    //
+    for i in 0..250 {
+        // recompute the centroids based on the assigned training examples
+        p = compute_centroids(&c, &X, 10);
+        c = assign_to_clusters(&p, &X);
+        println!("Iter {}", i);
+        //println!("{:?}, {:?}", c.len(), dims(&p));
+
+
+        // compute the label composition of each cluster
+        let mut composition: Matrix<u32> = Matrix::zeros(10, 10);
+        composition = c.iter().zip(y.data().iter())
+        .fold(composition, |mut acc, (c_i, y_i)| {
+            acc[[*c_i, *y_i as usize-1]] += 1;
+            acc
+        });
+
+        for row in composition.row_iter() {
+            println!("{:?}", (*row).into_iter().collect::<Vec<_>>());
+        }
+    }
+
+
 }
 
-/// compute the cluster centroids
-fn compute_centroids(c: &Vec<usize>, X: &Matrix<f64>) -> Matrix<f64> {
-    Matrix::zeros(0,0)
+/// for each cluster construct a matrix of the associated training examples
+/// then average over the rows to obtain the centroids
+fn compute_centroids(c: &Vec<usize>, X: &Matrix<f64>, K: usize) -> Matrix<f64> {
+    let n = X.cols();
+    let mut p: Matrix<f64> = Matrix::zeros(0, n);
+    let mut clusters: Vec<Matrix<f64>> = vec![Matrix::zeros(0, n); K];
+    // sort every training example into a matrix for its assigned cluster
+    X.row_iter().zip(c)
+    .fold(clusters, |mut acc, (x_i, c_i)| {
+        acc[*c_i] = acc[*c_i].vcat(&x_i);
+        acc
+    })
+    .iter()
+    .map(|mat| {
+        Matrix::new(1, n, (mat.sum_rows() / mat.rows() as f64))
+    })
+    .fold(p, |acc, val| acc.vcat(&val))
 }
 
 /// assign each training example to its nearest centroid

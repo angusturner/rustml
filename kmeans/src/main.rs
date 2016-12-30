@@ -54,30 +54,6 @@ fn main() {
         p = compute_centroids(&c, &X_train, 10);
         c = assign_to_clusters(&p, &X_train);
         // println!("{:?}, {:?}", c.len(), dims(&p));
-
-        // compute the label composition of each cluster
-        let mut composition: Matrix<f64> = Matrix::zeros(10, 10);
-        composition = c.iter()
-            .zip(y_train.data().iter())
-            .fold(composition, |mut acc, (c_i, y_i)| {
-                acc[[*c_i, *y_i]] += 1.0;
-                acc
-            });
-
-        // determine which cluster (0 -> K) to associate with each label
-        let inference = row_max(&composition);
-        println!("{:?}", inference);
-
-        //
-        //for row in composition.row_iter() {
-        //    println!("{:?}", (*row).into_iter().collect::<Vec<_>>());
-        //}
-
-        // generate predictions on the training set and compute accuracy
-        let c_train: Vec<usize> = assign_to_clusters(&p, &X_train);
-        let pred = c_train.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
-        let accuracy = accuracy(&pred, &(y_train.data()));
-        println!("Training set accuracy {}", accuracy);
     }
 
     // compute the label composition of each cluster

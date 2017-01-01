@@ -5,7 +5,7 @@ extern crate num_traits;
 
 use rand::distributions::{IndependentSample, Range};
 
-use rl::matrix::{Axes, Matrix, MatrixSlice, BaseMatrix};
+use rl::matrix::{Axes, Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
 use kmeans::utils::*;
 use kmeans::io::read_csv;
 use std::f64;
@@ -13,16 +13,19 @@ use std::f64;
 #[allow(non_snake_case)]
 fn main() {
     // design matrix m x n, where m = training examples, n = number of features
-    let X = read_csv("input.csv");
-
-    // split the input data into a training, cross-validation and test set
-    let (X_train, X_cv, X_test) = split_data(&X, (0.8, 0.1, 0.1));
-    let X_train = X;
+    let mut X = read_csv("input.csv");
 
     // response vector m x 1
     // y(i) corresponds to i-th training example, and is an integer between {1..r},
     // where r is the number of classes
-    let y_raw: Matrix<f64> = read_csv("output.csv");
+    let mut y_raw: Matrix<f64> = read_csv("output.csv");
+
+    // randomly shuffle the input data and labels
+    shuffle_rows(&mut vec![&mut X, &mut y_raw], 5000);
+
+    // split the input data into a training, cross-validation and test set
+    let (X_train, X_cv, X_test) = split_data(&X, (0.6, 0.2, 0.2));
+    //let mut X_train = X;
 
     // input labels for digit 0 have been mapped to 10 due to ease-of-use with Matlab's
     // ridiculous 1-indexing of vectors. This step reverses that, and also casts f64 -> usize.
@@ -39,11 +42,14 @@ fn main() {
 
     // split the labels into training, cv and test sets
     let y_mat = Matrix::new(y_vec.len(), 1, y_vec.clone());
-    let (y_train, y_cv, y_test) = split_data(&y_mat, (0.8, 0.1, 0.1));
-    let y_train = y_mat;
+    let (y_train, y_cv, y_test) = split_data(&y_mat, (0.6, 0.2, 0.2));
+    //let mut y_train = y_mat;
 
     // randomly initialize 10 cluster centroids, by setting to co-ords to random training example
     let mut p: Matrix<f64> = initialize_centroids(10, &X_train);
+
+    // compute centroids directly from training set labels, to get an indication of max accuracy
+    // p = compute_centroids(&y_train.data(), &X_train, 10);
 
     // assign every training example to its nearest cluster
     let mut c: Vec<usize> = assign_to_clusters(&p, &X_train);
@@ -77,14 +83,14 @@ fn main() {
     // generate predictions on the training set and compute accuracy
     let c_train: Vec<usize> = assign_to_clusters(&p, &X_train);
     let pred = c_train.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
-    let accuracy = accuracy(&pred, &(y_train.data()));
-    println!("Training set accuracy {}", accuracy);
+    let train_acc = accuracy(&pred, &(y_train.data()));
+    println!("Training set accuracy {}", train_acc);
 
     // generate predictions on the test set and compute accuracy
-    // let c_test: Vec<usize> = assign_to_clusters(&p, &X_test);
-    // let pred = c_test.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
-    // let test_acc = accuracy(&pred, &(y_test.data()));
-    // println!("Test set accuracy {}", test_acc);
+    let c_test: Vec<usize> = assign_to_clusters(&p, &X_test);
+    let pred = c_test.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
+    let test_acc = accuracy(&pred, &(y_test.data()));
+    println!("Test set accuracy {}", test_acc);
 }
 
 /// compute the accuracy by mapping the labels and corresponding predictions
@@ -105,7 +111,6 @@ fn accuracy(pred: &Vec<usize>, y: &Vec<usize>) -> f64 {
 
 /// function to split the data into (train, cv, test) sets
 /// NOTE: assumes the data is already randomly shuffled
-/// TODO: add random shuffling / random row selection
 fn split_data<T>(mat: &Matrix<T>, split: (f64, f64, f64)) -> (Matrix<T>, Matrix<T>, Matrix<T>)
     where T: std::clone::Clone + num_traits::identities::Zero + std::marker::Copy
 {
@@ -123,6 +128,28 @@ fn split_data<T>(mat: &Matrix<T>, split: (f64, f64, f64)) -> (Matrix<T>, Matrix<
 
     // convert all slices into owned Matrix structs, and return
     (train.into_matrix(), cv.into_matrix(), test.into_matrix())
+}
+
+/// function to shuffle matrix rows
+/// takes a vector of mutable matrix references, and will apply same tranformation to all matrices
+/// (i.e to apply same shuffling to labels and data)
+/// NOTE: all input matrices must have same row count
+fn shuffle_rows<T>(vec: &mut Vec<&mut Matrix<T>>, swaps: usize) {
+    // get the number of input rows
+    let num_rows = vec[0].rows();
+
+    // initialise random number generator, with bounds [0, num_rows)
+    let between = Range::new(0usize, num_rows);
+    let mut rng = rand::thread_rng();
+
+    // repeatedly select and swap two random rows
+    for _ in 0..swaps {
+        let a = between.ind_sample(&mut rng);
+        let b = between.ind_sample(&mut rng);
+        for i in 0..vec.len() {
+            vec[i].swap_rows(a, b);
+        }
+    }
 }
 
 /// for each cluster construct a matrix of the associated training examples

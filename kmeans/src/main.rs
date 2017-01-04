@@ -5,51 +5,55 @@ extern crate num_traits;
 
 use rand::distributions::{IndependentSample, Range};
 
-use rl::matrix::{Axes, Matrix, MatrixSlice, BaseMatrix, BaseMatrixMut};
+use rl::matrix::{Axes, Matrix, MatrixSlice, MatrixSliceMut, BaseMatrix, BaseMatrixMut};
 use kmeans::utils::*;
-use kmeans::io::read_csv;
+use kmeans::io::{read_csv, matrix_to_csv};
 use std::f64;
+
 
 #[allow(non_snake_case)]
 fn main() {
     // design matrix m x n, where m = training examples, n = number of features
-    let mut X = read_csv("input.csv");
+    let raw: Matrix<f64> = read_csv::<f64>("input2.csv");
+    let mut X_out = raw.clone();
+    let (X_slice, _) = raw.split_at(2, Axes::Col);
+    let mut X_train = X_slice.into_matrix();
+
+    println!("{:?}", dims(&X_train));
 
     // response vector m x 1
     // y(i) corresponds to i-th training example, and is an integer between {1..r},
     // where r is the number of classes
-    let mut y_raw: Matrix<f64> = read_csv("output.csv");
+    // let mut y_raw: Matrix<f64> = read_csv("output.csv");
 
     // randomly shuffle the input data and labels
-    shuffle_rows(&mut vec![&mut X, &mut y_raw], 5000);
+    // shuffle_rows(&mut vec![&mut X, &mut y_raw], 5000);
+    shuffle_rows(&mut vec![&mut X_train, &mut X_out], 200);
 
     // split the input data into a training, cross-validation and test set
-    let (X_train, X_cv, X_test) = split_data(&X, (0.6, 0.2, 0.2));
-    //let mut X_train = X;
+    // let (X_train, X_cv, X_test) = split_data(&X, (0.6, 0.2, 0.2));
 
     // input labels for digit 0 have been mapped to 10 due to ease-of-use with Matlab's
     // ridiculous 1-indexing of vectors. This step reverses that, and also casts f64 -> usize.
-    let y_vec = y_raw.data()
-        .iter()
-        .map(|y_i| {
-            let yusize = *y_i as usize;
-            match yusize {
-                10 => 0,
-                _ => yusize,
-            }
-        })
-        .collect::<Vec<usize>>();
+    // let y_vec = y_raw.data()
+    // .iter()
+    // .map(|y_i| {
+    // let y_usize = *y_i as usize;
+    // match y_usize {
+    // 10 => 0,
+    // _ => y_usize,
+    // }
+    // })
+    // .collect::<Vec<usize>>();
 
     // split the labels into training, cv and test sets
-    let y_mat = Matrix::new(y_vec.len(), 1, y_vec.clone());
-    let (y_train, y_cv, y_test) = split_data(&y_mat, (0.6, 0.2, 0.2));
-    //let mut y_train = y_mat;
+    // let y_mat = Matrix::new(y_vec.len(), 1, y_vec.clone());
+    // let (y_train, y_cv, y_test) = split_data(&y_mat, (0.6, 0.2, 0.2));
+    // let mut y_train = y_mat;
 
     // randomly initialize 10 cluster centroids, by setting to co-ords to random training example
-    let mut p: Matrix<f64> = initialize_centroids(10, &X_train);
-
-    // compute centroids directly from training set labels, to get an indication of max accuracy
-    // p = compute_centroids(&y_train.data(), &X_train, 10);
+    let K: usize = 3;
+    let mut p: Matrix<f64> = initialize_centroids(K, &X_train);
 
     // assign every training example to its nearest cluster
     let mut c: Vec<usize> = assign_to_clusters(&p, &X_train);
@@ -57,40 +61,48 @@ fn main() {
     // complete 50 iterations of kmeans algorithm
     for i in 0..50 {
         println!("Iter {}", i);
-        p = compute_centroids(&c, &X_train, 10);
+        p = compute_centroids(&c, &X_train, K);
         c = assign_to_clusters(&p, &X_train);
-        // println!("{:?}, {:?}", c.len(), dims(&p));
     }
 
+    // iterate over the original matrix and fix up the classes
+    for i in 0..X_out.rows() {
+        X_out[[i, 2]] = c[i] as f64;
+    }
+
+    // output to csv
+    matrix_to_csv(&X_out, "test_output.csv");
+
     // compute the label composition of each cluster
-    let mut composition: Matrix<f64> = Matrix::zeros(10, 10);
-    composition = c.iter()
-        .zip(y_train.data().iter())
-        .fold(composition, |mut acc, (c_i, y_i)| {
-            acc[[*c_i, *y_i]] += 1.0;
-            acc
-        });
-
-    // determine which cluster (0 -> K) to associate with each label
-    let inference = row_max(&composition);
-    println!("{:?}", inference);
-
+    // let mut composition: Matrix<f64> = Matrix::zeros(10, 10);
+    // composition = c.iter()
+    // .zip(y_train.data().iter())
+    // .fold(composition, |mut acc, (c_i, y_i)| {
+    // acc[[*c_i, *y_i]] += 1.0;
+    // acc
+    // });
     //
-    //for row in composition.row_iter() {
+    // determine which cluster (0 -> K) to associate with each label
+    // let inference = row_max(&composition);
+    // println!("{:?}", inference);
+    //
+    //
+    // for row in composition.row_iter() {
     //    println!("{:?}", (*row).into_iter().collect::<Vec<_>>());
-    //}
-
+    //
+    //
     // generate predictions on the training set and compute accuracy
-    let c_train: Vec<usize> = assign_to_clusters(&p, &X_train);
-    let pred = c_train.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
-    let train_acc = accuracy(&pred, &(y_train.data()));
-    println!("Training set accuracy {}", train_acc);
-
+    // let c_train: Vec<usize> = assign_to_clusters(&p, &X_train);
+    // let pred = c_train.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
+    // let train_acc = accuracy(&pred, &(y_train.data()));
+    // println!("Training set accuracy {}", train_acc);
+    //
     // generate predictions on the test set and compute accuracy
-    let c_test: Vec<usize> = assign_to_clusters(&p, &X_test);
-    let pred = c_test.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
-    let test_acc = accuracy(&pred, &(y_test.data()));
-    println!("Test set accuracy {}", test_acc);
+    // let c_test: Vec<usize> = assign_to_clusters(&p, &X_test);
+    // let pred = c_test.iter().map(|c_i| inference[*c_i] as usize).collect::<Vec<usize>>();
+    // let test_acc = accuracy(&pred, &(y_test.data()));
+    // println!("Test set accuracy {}", test_acc);
+    //
 }
 
 /// compute the accuracy by mapping the labels and corresponding predictions
@@ -166,7 +178,12 @@ fn compute_centroids(c: &Vec<usize>, X: &Matrix<f64>, K: usize) -> Matrix<f64> {
             acc
         })
         .iter()
-        .map(|mat| Matrix::new(1, n, (mat.sum_rows() / mat.rows() as f64)))
+        .map(|mat| {
+            match mat.rows() {
+                0 => Matrix::zeros(1, n),
+                _ => Matrix::new(1, n, (mat.sum_rows() / mat.rows() as f64)),
+            }
+        })
         .fold(p, |acc, val| acc.vcat(&val))
 }
 

@@ -14,7 +14,7 @@ use std::f64;
 #[allow(non_snake_case)]
 fn main() {
     // design matrix m x n, where m = training examples, n = number of features
-    let raw: Matrix<f64> = read_csv::<f64>("input2.csv");
+    let raw: Matrix<f64> = read_csv::<f64>("schwartz_usage.csv");
     let mut X_out = raw.clone();
     let (X_slice, _) = raw.split_at(2, Axes::Col);
     let mut X_train = X_slice.into_matrix();
@@ -28,7 +28,7 @@ fn main() {
 
     // randomly shuffle the input data and labels
     // shuffle_rows(&mut vec![&mut X, &mut y_raw], 5000);
-    shuffle_rows(&mut vec![&mut X_train, &mut X_out], 200);
+    shuffle_rows(&mut vec![&mut X_train, &mut X_out], 40000);
 
     // split the input data into a training, cross-validation and test set
     // let (X_train, X_cv, X_test) = split_data(&X, (0.6, 0.2, 0.2));
@@ -50,6 +50,8 @@ fn main() {
     // let y_mat = Matrix::new(y_vec.len(), 1, y_vec.clone());
     // let (y_train, y_cv, y_test) = split_data(&y_mat, (0.6, 0.2, 0.2));
     // let mut y_train = y_mat;
+    // 
+
 
     // randomly initialize 10 cluster centroids, by setting to co-ords to random training example
     let K: usize = 3;
